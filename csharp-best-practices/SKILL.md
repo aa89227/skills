@@ -341,12 +341,34 @@ public sealed class Counter
 }
 ```
 
+## C# 14: Null-conditional Assignment
+
+```csharp
+public sealed class Customer
+{
+    public Order? CurrentOrder { get; set; }
+}
+
+public sealed class Order { }
+
+public static class NullConditionalAssignmentExample
+{
+    public static Order GetCurrentOrder() => new();
+
+    public static void Assign(Customer? customer)
+    {
+        customer?.CurrentOrder = GetCurrentOrder();
+    }
+}
+```
+
 ## C# 12/13/14 Feature Highlights
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 
 public static class FeatureHighlights
 {
@@ -391,7 +413,7 @@ public static class FeatureHighlights
     // C# 13: new lock semantics with System.Threading.Lock
     public static int ThreadSafeIncrement(ref int counter)
     {
-        var gate = new System.Threading.Lock();
+        var gate = new Lock();
         lock (gate)
         {
             counter++;
