@@ -1,0 +1,18 @@
+{
+  "name": "skills-marketplace",
+  "owner": {
+    "name": "aa89227",
+    "email": "aa89227@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "csharp-best-practices",
+      "source": "./csharp-best-practices",
+      "description": "C# 14 latest version best practices and patterns. Comprehensive guide with code examples, anti-patterns, and design patterns.",
+      "version": "2.0.0",
+      "author": {
+        "name": "aa89227"
+      }
+    }
+  ]
+}
