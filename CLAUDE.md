@@ -4,42 +4,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-這是一個 Claude Code skill plugins 的集合倉庫，包含可重用的技能插件。
+This is a collection repository of Claude Code skill plugins containing reusable skill plugins.
 
 ## Architecture
 
 ```
 skills/
 ├── .claude-plugin/
-│   └── marketplace.json     # 插件索引，列出所有可用插件
-├── csharp-best-practices/   # C# 14 最佳實踐插件
+│   └── marketplace.json     # Plugin index listing all available plugins
+├── csharp-best-practices/   # C# 14 best practices plugin
 │   ├── .claude-plugin/
-│   │   └── plugin.json      # 插件清單
+│   │   └── plugin.json      # Plugin manifest
 │   └── skills/
 │       └── csharp-best-practices/
-│           ├── SKILL.md     # 主要技能檔（範例與規則）
-│           └── BEST-PRACTICES.md  # 維護說明與原理
-└── git-operations/          # Git 工作流插件
+│           ├── SKILL.md     # Main skill file (examples and rules)
+│           └── BEST-PRACTICES.md  # Maintenance notes and rationale
+└── git-operations/          # Git workflow plugin
     ├── .claude-plugin/
     │   └── plugin.json
     └── skills/
         ├── git-commit-messages/
-        │   └── SKILL.md     # 提交訊息規範
+        │   └── SKILL.md     # Commit message conventions
         └── git-worktrees/
-            └── SKILL.md     # worktree 使用指南
+            └── SKILL.md     # Worktree usage guide
 ```
 
 ## Plugin Structure Convention
 
-每個插件遵循相同結構：
-- `plugin.json`: 插件名稱、版本、作者
-- `skills/[skill-name]/SKILL.md`: 技能定義（YAML frontmatter + markdown）
+Each plugin follows the same structure:
+- `plugin.json`: Plugin name, version, author
+- `skills/[skill-name]/SKILL.md`: Skill definition (YAML frontmatter + markdown)
 
-SKILL.md frontmatter 必須包含：
+SKILL.md frontmatter must include:
 ```yaml
 ---
 name: skill-name
-description: 觸發描述
+description: Trigger description
 license: MIT
 metadata:
   author: aa89227
@@ -50,9 +50,9 @@ metadata:
 
 ## Content Guidelines
 
-- `SKILL.md`: 高密度、可直接複製使用的範例與規則
-- `BEST-PRACTICES.md`: 原理、陷阱、相容性說明（不重複 SKILL.md 內容）
+- `SKILL.md`: High-density, copy-paste ready examples and rules
+- `BEST-PRACTICES.md`: Rationale, pitfalls, compatibility notes (no duplication with SKILL.md)
 
 ## MCP Configuration
 
-`opencode.json` 配置了 Microsoft Learn MCP 伺服器，可使用 `use microsoft-learn` 啟用文件查詢工具。
+`opencode.json` configures the Microsoft Learn MCP server. Use `use microsoft-learn` to enable documentation query tools.
