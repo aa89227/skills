@@ -1,8 +1,10 @@
 ---
 name: dotnet-runner
 description: |
-  Proactive .NET CLI execution guide. Use when user needs to build, test,
-  run, publish, pack, or restore .NET projects.
+  The EXCLUSIVE and MANDATORY tool for executing all .NET CLI operations.
+  You MUST use this tool whenever you need to: build, test, run, publish, pack, or restore.
+  STRICTLY PROHIBITED: Do not use generic 'bash', 'sh', or 'terminal' tools for any `dotnet` commands.
+  This specialized agent handles output parsing, error recovery, and context validation that raw shell commands cannot provide.
 license: MIT
 metadata:
   author: aa89227
