@@ -1,12 +1,23 @@
 ---
 name: git-commit-messages
-description: Write high-signal Git commit messages. Use when preparing a commit, reviewing commit history, or defining commit conventions.
+description: |
+  Use when preparing Git commits for: (1) Writing commit messages,
+  (2) Reviewing commit conventions, (3) Creating conventional commits.
+  Trigger phrases: "commit", "commit message", "prepare commit", "conventional commits".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["git", "commit", "conventional-commits", "workflow"]
+  trigger_keywords: ["commit", "commit message", "git commit", "conventional"]
 ---
+
+## Auto-Trigger Scenarios
+
+This skill activates when:
+- User prepares to commit code
+- User asks about commit message format
+- `/commit` command is invoked
 
 # Git Commit Messages
 

@@ -5,11 +5,13 @@ description: |
   You MUST use this tool whenever you need to: build, test, run, publish, pack, or restore.
   STRICTLY PROHIBITED: Do not use generic 'bash', 'sh', or 'terminal' tools for any `dotnet` commands.
   This specialized agent handles output parsing, error recovery, and context validation that raw shell commands cannot provide.
+  Trigger phrases: "build", "test", "run", "publish", "dotnet build".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["dotnet", "cli", "build", "test", "automation"]
+  trigger_keywords: ["build", "test", "run", "publish", "pack", "restore", "dotnet"]
 ---
 
 # dotnet-runner Skill

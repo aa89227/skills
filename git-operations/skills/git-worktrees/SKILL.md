@@ -1,12 +1,23 @@
 ---
 name: git-worktrees
-description: Use git worktree for parallel branch workflows without constant switching. Use when working on multiple tasks/PRs at once.
+description: |
+  Use when managing parallel Git workflows for: (1) Working on multiple branches,
+  (2) Creating isolated workspaces, (3) Avoiding branch switching.
+  Trigger phrases: "worktree", "multiple branches", "parallel PRs", "isolated workspace".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["git", "worktree", "workflow"]
+  trigger_keywords: ["worktree", "git worktree", "multiple branches", "parallel"]
 ---
+
+## Auto-Trigger Scenarios
+
+This skill activates when:
+- User works on multiple branches/PRs simultaneously
+- User asks about git worktree
+- User needs isolated workspaces
 
 # Git Worktrees
 

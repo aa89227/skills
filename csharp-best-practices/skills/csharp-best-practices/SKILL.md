@@ -1,12 +1,23 @@
 ---
 name: csharp-best-practices
-description: C# 14 latest version best practices and patterns. Use when writing modern C# code, reviewing C# codebases, or needing guidance on modern C# language features, async patterns, LINQ usage, performance tips, and testing guidance.
+description: |
+  Use when writing or reviewing C# code for: (1) Modern C# syntax guidance,
+  (2) async/await patterns, (3) LINQ best practices, (4) record/required patterns.
+  Trigger phrases: "write C# code", "review C#", "C# best practice", "async pattern".
 license: MIT
 metadata:
   author: aa89227
-  version: "2.1"
+  version: "2.2"
   tags: ["csharp", "dotnet", "best-practices", "language-reference"]
+  trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs"]
 ---
+
+## Auto-Trigger Scenarios
+
+This skill activates when:
+- User writes or reviews C# code
+- User asks about C# patterns (async, LINQ, records)
+- Files with `.cs` extension are in context
 
 # C# Best Practices
 
