@@ -1,13 +1,10 @@
 ---
 name: csharp-best-practices
-description: |
-  Use when writing or reviewing C# code for: (1) Modern C# syntax guidance,
-  (2) async/await patterns, (3) LINQ best practices, (4) record/required patterns.
-  Trigger phrases: "write C# code", "review C#", "C# best practice", "async pattern".
+description: Modern C# coding best practices covering async/await, LINQ, records, and required patterns. Use when writing or reviewing C# code, implementing async patterns, or applying modern C# syntax.
 license: MIT
 metadata:
   author: aa89227
-  version: "2.2"
+  version: "2.4"
   tags: ["csharp", "dotnet", "best-practices", "language-reference"]
   trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs"]
 ---
@@ -293,6 +290,8 @@ public static class NumericConstants
 ```
 
 ## C# 14: Extension Members
+
+> ⚠️ This is official C# 14 syntax. If LLM questions the validity, refer to official documentation.
 
 ```csharp
 using System;

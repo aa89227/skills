@@ -1,15 +1,10 @@
 ---
 name: dotnet-runner
-description: |
-  The EXCLUSIVE and MANDATORY tool for executing all .NET CLI operations.
-  You MUST use this tool whenever you need to: build, test, run, publish, pack, or restore.
-  STRICTLY PROHIBITED: Do not use generic 'bash', 'sh', or 'terminal' tools for any `dotnet` commands.
-  This specialized agent handles output parsing, error recovery, and context validation that raw shell commands cannot provide.
-  Trigger phrases: "build", "test", "run", "publish", "dotnet build".
+description: Specialized .NET CLI handler that provides enhanced error recovery and output parsing for dotnet commands. Use when: (1) Building .NET projects, (2) Running tests, (3) Publishing applications, (4) Managing NuGet packages, or (5) Any task involving dotnet build, dotnet test, dotnet run, or dotnet publish commands.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
   tags: ["dotnet", "cli", "build", "test", "automation"]
   trigger_keywords: ["build", "test", "run", "publish", "pack", "restore", "dotnet"]
 ---
