@@ -52,6 +52,44 @@ public async Task QueryProductListForCategory()
 }
 ```
 
+### Expect List (optional — under Then)
+
+When `Then` alone cannot clearly express what the test focuses on (e.g., complex responses, framework-level assertions), add a bullet list of **behavior-level** expectations:
+
+```csharp
+[Test]
+[Description("""
+Given: A category exists in the system
+And: The category contains two products and one archived product
+When: Query the product list for that category
+Then: Should return the active product list
+- contains exactly 2 items
+- excludes archived products
+- items sorted by name ascending
+""")]
+public async Task QueryActiveProductListForCategory()
+{
+    // Arrange
+    var categoryId = await Server.CreateCategory();
+    await Server.CreateProduct(categoryId, "Widget B");
+    await Server.CreateProduct(categoryId, "Widget A");
+    await Server.CreateArchivedProduct(categoryId, "Old Widget");
+
+    // Act
+    var response = await Client.Product().GetProductsByCategoryAsync(categoryId);
+
+    // Assert
+    response.EnsureSuccessStatusCode();
+    var json = await response.Content.ReadAsStringAsync();
+    await VerifyJsonSnapshotAsync(json, "Product.QueryActiveByCategory");
+}
+```
+
+Rules:
+- List items describe **behavior / focus**, not field-level details (field validation is the snapshot's job).
+- Only add when `Then` alone is ambiguous — simple scenarios don't need it.
+- Each bullet should answer "what aspect of the response are we verifying?"
+
 ### Multi-step Scenario (optional When/Then)
 
 When a test needs to verify a sequence of behaviors:
@@ -95,6 +133,7 @@ public async Task RemoveTagThenQueryShouldBeEmpty()
 | `When:` | Yes | The action being tested |
 | `Then:` | Yes | Expected outcome |
 | Additional `When:/Then:` | No | For multi-step behavior verification |
+| Expect list (under `Then:`) | No | Behavior-level bullets clarifying test focus when `Then` is ambiguous |
 
 ## Rules
 
@@ -103,6 +142,7 @@ public async Task RemoveTagThenQueryShouldBeEmpty()
 3. **`// Arrange`, `// Act`, `// Assert`** — always present, in this order.
 4. **Multi-step**: repeat `// Act` and `// Assert` pairs when verifying sequential behaviors.
 5. **One scenario per test** — don't combine unrelated assertions.
+6. **Expect list is optional** — only add when `Then` alone cannot clarify what the test focuses on. List behavior-level expectations, not field-level details.
 
 ## Additional Resources
 
