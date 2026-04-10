@@ -1,4 +1,4 @@
-// Microsoft Agent Framework 1.0.0-rc4 — Workflows
+// Microsoft Agent Framework 1.0.0 — Workflows
 // Demonstrates: WorkflowBuilder, lambda executor, custom Executor class,
 //   Executor<TIn,TOut>, [MessageHandler] source generator, InProcessExecution
 

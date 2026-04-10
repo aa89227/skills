@@ -1,14 +1,16 @@
-// Microsoft Agent Framework 1.0.0-rc4 — MCP Tools Integration
-// Demonstrates: local MCP (stdio), hosted MCP (Azure AI Foundry),
+// Microsoft Agent Framework 1.0.0 — MCP Tools Integration
+// Demonstrates: local MCP (stdio), hosted MCP (Responses API),
 //   MCP tool approval (human-in-the-loop)
 
-using Azure.AI.Agents.Persistent;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
+using OpenAI.Responses;
 
 var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")!;
+var deploymentName = "gpt-4o-mini";
 
 // --- Local MCP Server (stdio transport) ---
 
@@ -22,12 +24,13 @@ await using var mcpClient = await McpClient.CreateAsync(new StdioClientTransport
 var mcpTools = await mcpClient.ListToolsAsync();
 
 AIAgent agentWithMcp = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
-    .GetChatClient("gpt-4o-mini")
+    .GetChatClient(deploymentName)
     .AsAIAgent(
         instructions: "You answer questions about GitHub repos.",
         tools: [.. mcpTools.Cast<AITool>()]);
 
-// --- Hosted MCP (Azure AI Foundry, Responses/Persistent Agents API) ---
+// --- Hosted MCP (Responses API — server-side MCP execution) ---
+// Requires: GetResponsesClient() (not GetChatClient)
 
 var mcpTool = new HostedMcpServerTool(
     serverName:    "microsoft_learn",
@@ -37,19 +40,13 @@ var mcpTool = new HostedMcpServerTool(
     ApprovalMode = HostedMcpServerToolApprovalMode.NeverRequire   // auto-approve
 };
 
-var persistentAgentsClient = new PersistentAgentsClient(endpoint, new DefaultAzureCredential());
-
-AIAgent persistentAgent = await persistentAgentsClient.CreateAIAgentAsync(
-    model: "gpt-4o-mini",
-    options: new()
-    {
-        Name = "LearnAgent",
-        ChatOptions = new()
-        {
-            Instructions = "Search Microsoft Learn only.",
-            Tools = [mcpTool]
-        },
-    });
+AIAgent responsesAgent = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
+    .GetResponsesClient()
+    .AsAIAgent(
+        model: deploymentName,
+        instructions: "Search Microsoft Learn only.",
+        name: "LearnAgent",
+        tools: [mcpTool]);
 
 // --- MCP with Tool Approval (human-in-the-loop) ---
 
@@ -62,18 +59,22 @@ var mcpToolWithApproval = new HostedMcpServerTool(
 };
 
 // Run — may return approval requests instead of a final answer
-AgentSession session = await persistentAgent.CreateSessionAsync();
-AgentResponse response = await persistentAgent.RunAsync("Search for MCP docs.", session);
+AgentSession session = await responsesAgent.CreateSessionAsync();
+AgentResponse response = await responsesAgent.RunAsync("Search for MCP docs.", session);
 
-// Check for pending approval requests
+// Check for pending approval requests (ToolApprovalRequestContent, not McpServerToolApprovalRequestContent)
 var approvals = response.Messages
     .SelectMany(m => m.Contents)
-    .OfType<McpServerToolApprovalRequestContent>()
+    .OfType<ToolApprovalRequestContent>()
     .ToList();
 
-// Approve each request and continue
+// Approve each request — cast ToolCall to McpServerToolCallContent for MCP details
 List<ChatMessage> userResponses = approvals.ConvertAll(req =>
-    new ChatMessage(ChatRole.User, [req.CreateResponse(approved: true)]));
+{
+    McpServerToolCallContent mcpToolCall = (McpServerToolCallContent)req.ToolCall!;
+    Console.WriteLine($"Approving: {mcpToolCall.ServerName}/{mcpToolCall.Name}");
+    return new ChatMessage(ChatRole.User, [req.CreateResponse(approved: true)]);
+});
 
-response = await persistentAgent.RunAsync(userResponses, session);
+response = await responsesAgent.RunAsync(userResponses, session);
 Console.WriteLine(response);

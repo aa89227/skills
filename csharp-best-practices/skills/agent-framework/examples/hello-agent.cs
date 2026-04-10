@@ -1,4 +1,4 @@
-// Microsoft Agent Framework 1.0.0-rc4 — Hello Agent & Providers
+// Microsoft Agent Framework 1.0.0 — Hello Agent & Providers
 // Demonstrates: minimal setup (Azure OpenAI), streaming, OpenAI (non-Azure),
 //   Chat Completion vs Responses client, function tools
 
@@ -37,13 +37,14 @@ AIAgent chatAgent = client.GetChatClient("gpt-4o-mini")
     .AsAIAgent(instructions: "You are a helpful assistant.", name: "ChatBot");
 
 // Responses client — richer tools (code interpreter, file search, hosted MCP)
-AIAgent responsesAgent = client.GetResponseClient("gpt-4o-mini")
-    .AsAIAgent(instructions: "You are a helpful assistant.", name: "ResponseBot");
+// Note: GetResponsesClient() without model; pass model via AsAIAgent(model:)
+AIAgent responsesAgent = client.GetResponsesClient()
+    .AsAIAgent(model: "gpt-4o-mini", instructions: "You are a helpful assistant.", name: "ResponseBot");
 
-// OpenAI (non-Azure)
+// OpenAI (non-Azure) — model is required via AsAIAgent(model:)
 AIAgent openAiAgent = new OpenAIClient("<apikey>")
-    .GetResponsesClient("gpt-4o-mini")
-    .AsAIAgent(name: "HaikuBot", instructions: "You write beautifully.");
+    .GetResponsesClient()
+    .AsAIAgent(model: "gpt-4o-mini", name: "HaikuBot", instructions: "You write beautifully.");
 
 // --- Function Tools ---
 

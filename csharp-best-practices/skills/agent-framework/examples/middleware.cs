@@ -1,4 +1,4 @@
-// Microsoft Agent Framework 1.0.0-rc4 — Middleware
+// Microsoft Agent Framework 1.0.0 — Middleware
 // Demonstrates: agent run middleware, function calling middleware,
 //   IChatClient middleware, AIContextProvider as middleware
 

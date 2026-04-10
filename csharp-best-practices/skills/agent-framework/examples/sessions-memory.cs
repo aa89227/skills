@@ -1,4 +1,4 @@
-// Microsoft Agent Framework 1.0.0-rc4 — Sessions & AIContextProvider
+// Microsoft Agent Framework 1.0.0 — Sessions & AIContextProvider
 // Demonstrates: AgentSession multi-turn, session serialization,
 //   AIContextProvider implementation (ProvideAIContextAsync + StoreAIContextAsync)
 
@@ -35,15 +35,15 @@ AIAgent agentWithMemory = chatClient.AsAIAgent(new ChatClientAgentOptions()
 internal sealed class SimpleMemoryProvider : AIContextProvider
 {
     private readonly ProviderSessionState<MyState> _sessionState;
+    private IReadOnlyList<string>? _stateKeys;
 
     public SimpleMemoryProvider()
-        : base(null, null)
     {
         _sessionState = new ProviderSessionState<MyState>(
             _ => new MyState(), this.GetType().Name);
     }
 
-    public override string StateKey => _sessionState.StateKey;
+    public override IReadOnlyList<string> StateKeys => _stateKeys ??= [_sessionState.StateKey];
 
     // Called BEFORE LLM call — inject context into prompt
     protected override ValueTask<AIContext> ProvideAIContextAsync(

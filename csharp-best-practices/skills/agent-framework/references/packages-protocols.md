@@ -1,45 +1,60 @@
-# Microsoft Agent Framework — Packages & Protocols Reference (1.0.0-rc4)
+# Microsoft Agent Framework — Packages & Protocols Reference (1.0.0)
 
 ## NuGet Packages
+
+### Core (GA — 1.0.0)
 
 | Package | Purpose |
 |---|---|
 | `Microsoft.Agents.AI` | Core: `AIAgent`, builder, logging, OpenTelemetry |
 | `Microsoft.Agents.AI.Abstractions` | Base abstractions: `AIAgent`, `AgentSession`, `AIContextProvider` |
-| `Microsoft.Agents.AI.OpenAI` | Azure OpenAI / OpenAI provider (Chat, Responses, Assistants) |
-| `Microsoft.Agents.AI.Anthropic` | Anthropic Claude provider |
 | `Microsoft.Agents.AI.Workflows` | Graph-based workflow engine |
 | `Microsoft.Agents.AI.Workflows.Generators` | Source generators for `[MessageHandler]` (AOT) |
 | `Microsoft.Agents.AI.A2A` | Agent-to-Agent protocol support |
+| `Microsoft.Agents.AI.AGUI` | AG-UI protocol client support |
 | `Microsoft.Agents.AI.Hosting` | ASP.NET Core hosting |
-| `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` | A2A protocol hosting |
-| `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` | AG-UI protocol hosting |
-| `Microsoft.Agents.AI.DevUI` | Interactive developer UI for debugging |
-| `Microsoft.Agents.AI.Declarative` | Declarative agent definitions |
-| `Microsoft.Agents.AI.AzureAI.Persistent` | Azure AI Foundry persistent agents |
-| `Microsoft.Agents.AI.FoundryMemory` | Azure AI Foundry memory integration |
-| `Microsoft.Agents.AI.CosmosNoSql` | Cosmos DB NoSQL context provider |
+| `Microsoft.Agents.AI.Hosting.A2A` | A2A hosting abstractions |
+| `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` | A2A protocol ASP.NET Core hosting |
+| `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` | AG-UI protocol ASP.NET Core hosting |
 | `Microsoft.Agents.AI.DurableTask` | Long-running workflows with Azure Durable Functions |
+| `Microsoft.Agents.AI.CosmosNoSql` | Cosmos DB NoSQL context provider |
+| `Microsoft.Agents.AI.DevUI` | Interactive developer UI for debugging |
+
+### Provider & Integration (Preview/Experimental)
+
+| Package | Purpose |
+|---|---|
+| `Microsoft.Agents.AI.OpenAI` | Azure OpenAI / OpenAI provider (Chat, Responses) — **Experimental** |
+| `Microsoft.Agents.AI.Anthropic` | Anthropic Claude provider |
+| `Microsoft.Agents.AI.AzureAI.Persistent` | Azure AI Foundry persistent agents |
+| `Microsoft.Agents.AI.Foundry` | Azure AI Foundry agent integration (replaces FoundryMemory) |
+| `Microsoft.Agents.AI.CopilotStudio` | Copilot Studio integration |
+| `Microsoft.Agents.AI.GitHub.Copilot` | GitHub Copilot SDK integration |
+| `Microsoft.Agents.AI.Purview` | Microsoft Purview compliance tools |
+| `Microsoft.Agents.AI.Hosting.OpenAI` | OpenAI-compatible hosting — **Alpha** |
+| `Microsoft.Agents.AI.Hosting.AzureFunctions` | Serverless agent hosting (Durable Agents) |
+| `Microsoft.Agents.AI.Workflows.Declarative` | Declarative workflow definitions |
+| `Microsoft.Agents.AI.Workflows.Declarative.Foundry` | Declarative workflows for Foundry Agents |
+| `Microsoft.Agents.AI.Workflows.Declarative.Mcp` | MCP server integration in declarative workflows |
 
 ## Provider Client Types
 
 | Client Type | API | Best For | Create Method |
 |---|---|---|---|
 | **Chat Completion** | Chat Completions | Simple agents, broad model support | `client.GetChatClient(model)` |
-| **Responses** | Responses API | Full-featured: code interpreter, file search, hosted MCP | `client.GetResponseClient(model)` |
-| **Assistants** | Assistants API | Server-managed agents with persistent state | `client.GetAssistantClient(model)` |
+| **Responses** | Responses API | Full-featured: code interpreter, file search, hosted MCP | `client.GetResponsesClient()` + `AsAIAgent(model: ...)` |
 
 ## Tool Support Matrix
 
-| Tool Type | Chat Completion | Responses | Assistants | Foundry | Anthropic | Ollama |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Function Tools | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Tool Approval | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Code Interpreter | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| File Search | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Web Search | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Hosted MCP | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Local MCP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool Type | Chat Completion | Responses | Foundry | Anthropic | Ollama |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Function Tools | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool Approval | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Code Interpreter | ❌ | ✅ | ✅ | ❌ | ❌ |
+| File Search | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Web Search | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Hosted MCP | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Local MCP | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Protocols & Hosting
 
@@ -56,9 +71,10 @@
 | Concept | Description |
 |---|---|
 | **Executor** | Processing unit — custom logic or AI agent |
+| **Executor&lt;TIn,TOut&gt;** | Strongly-typed executor with explicit input/output types |
 | **Edge** | Connection between executors (data flow path) |
 | **WorkflowBuilder** | Builds the directed graph of executors + edges |
-| **InProcessExecution** | Runs the workflow in-process |
+| **InProcessExecution** | Runs the workflow in-process (modes: Default, OffThread, Concurrent, Lockstep) |
 | **Run** | Represents a workflow execution with events |
 | **Checkpointing** | Save/resume workflow state for long-running processes |
 | **`[MessageHandler]`** | Source generator attribute for `partial` executor classes (AOT compatible) |

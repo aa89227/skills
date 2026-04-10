@@ -8,15 +8,15 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
-  agent-framework-version: "1.0.0-rc4"
+  version: "3.0"
+  agent-framework-version: "1.0.0"
   tags: ["csharp", "dotnet", "agent-framework", "ai-agent", "workflow", "mcp", "a2a"]
   trigger_keywords: ["agent-framework", "AIAgent", "Microsoft.Agents", "ChatClientAgent", "workflow", "MCP", "A2A"]
 ---
 
-# Microsoft Agent Framework (.NET) — 1.0.0-rc4
+# Microsoft Agent Framework (.NET) — 1.0.0
 
-> Verified against `dotnet-1.0.0-rc4` tag of `microsoft/agent-framework`.
+> Verified against `dotnet-1.0.0` tag of `microsoft/agent-framework`.
 
 ## Quick Reference
 
@@ -26,7 +26,7 @@ metadata:
 | Provider package | `Microsoft.Agents.AI.OpenAI` (Azure OpenAI / OpenAI) |
 | Namespace | `Microsoft.Agents.AI` |
 | Base class | `AIAgent` — all agents derive from this |
-| Requires | .NET 10+ recommended, .NET 8+ supported |
+| Requires | .NET 10+ recommended, .NET 8/9 supported |
 | Repo | `github.com/microsoft/agent-framework` |
 | Docs | `learn.microsoft.com/en-us/agent-framework/` |
 
@@ -73,12 +73,13 @@ metadata:
 | Function tool | `AIFunctionFactory.Create(MyMethod)` → pass to `tools:` |
 | Local MCP tools | `McpClient.CreateAsync(transport)` → `ListToolsAsync()` → cast to `AITool` |
 | Hosted MCP | `new HostedMcpServerTool(serverName, serverAddress)` |
-| MCP approval | Check `AgentResponse` for `McpServerToolApprovalRequestContent` |
+| MCP approval | Check `AgentResponse` for `ToolApprovalRequestContent` |
 | Memory/context | Implement `AIContextProvider` → pass to `AIContextProviders` in options |
 | Agent middleware | `agent.AsBuilder().Use(runMiddleware, null).Build()` |
 | Function middleware | `agent.AsBuilder().Use(funcMiddleware).Build()` |
 | Chat middleware | `chatClient.AsBuilder().Use(getResponseFunc: ...).BuildAIAgent(...)` |
 | Context middleware | `agent.AsBuilder().UseAIContextProviders(provider).Build()` |
+| Agent as tool | `agent.AsAIFunction()` → pass to another agent's `tools:` |
 | Serialize session | `agent.SerializeSessionAsync(session)` |
 | Deserialize session | `agent.DeserializeSessionAsync(json)` |
 | Workflow | `WorkflowBuilder` → `AddEdge()` → `Build()` → `InProcessExecution.RunAsync()` |
