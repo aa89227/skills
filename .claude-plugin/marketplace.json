@@ -22,6 +22,15 @@
       "author": {
         "name": "aa89227"
       }
+    },
+    {
+      "name": "workflow",
+      "source": "./workflow",
+      "description": "Workflow mode skills: control Claude's behavior phases (discuss, execute, review).",
+      "version": "1.0.0",
+      "author": {
+        "name": "aa89227"
+      }
     }
   ]
 }
