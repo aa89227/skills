@@ -9,7 +9,7 @@
       "name": "csharp-best-practices",
       "source": "./csharp-best-practices",
       "description": "C# 14 latest version best practices and patterns. Comprehensive guide with code examples, anti-patterns, and design patterns.",
-      "version": "2.1.0",
+      "version": "2.10.0",
       "author": {
         "name": "aa89227"
       }
