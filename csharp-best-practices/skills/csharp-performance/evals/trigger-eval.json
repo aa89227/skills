@@ -1,0 +1,22 @@
+[
+  {"query": "這段 ParseLogLine 一秒要跑幾百萬次,profiler 顯示它佔了 40% CPU 而且 Gen0 一直在飆,幫我把 allocation 砍掉", "should_trigger": true},
+  {"query": "I ran BenchmarkDotNet on our JSON serialization path and it's allocating 4KB per request at 8000 RPS. how do I get this closer to zero-alloc?", "should_trigger": true},
+  {"query": "我們的訂單匯入 API p99 latency 要壓到 50ms 以下,目前卡在一個 List 的 LINQ 處理,有什麼辦法加速這個 hot path", "should_trigger": true},
+  {"query": "this matrix multiply loop over a 10M element float[] is the bottleneck in our pricing engine — can we vectorize it with SIMD?", "should_trigger": true},
+  {"query": "Server GC vs Workstation GC 對我們跑在 2-core container 裡的 ASP.NET Core 服務哪個比較好?最近 GC pause 有點長", "should_trigger": true},
+  {"query": "我有一個 ReadUserAsync,九成的情況都是 cache hit 直接回傳,但每次都 allocate 一個 Task,這個在高流量下很傷,怎麼改", "should_trigger": true},
+  {"query": "the LOH is fragmenting because we keep allocating 200KB buffers per file upload. how should I pool these?", "should_trigger": true},
+  {"query": "幫我看一下這個字串處理為什麼這麼慢又吃記憶體,它在每筆交易都會跑,目標是 zero allocation", "should_trigger": true},
+  {"query": "我們要上 .NET 10 了,聽說 runtime 在效能上有不少改進,有哪些以前要手動優化的東西現在免費就有了?我想把一些舊的手動 workaround 拿掉", "should_trigger": true},
+  {"query": "cold start 太慢了,這是個 serverless function,有沒有辦法用 AOT 或 ReadyToRun 把啟動時間壓下來", "should_trigger": true},
+  {"query": "幫我寫一個 C# class 來代表 Order,要有 Id、CustomerName 跟一個 items 清單,符合 best practice", "should_trigger": false},
+  {"query": "review 一下我這段 async 方法寫得對不對,CancellationToken 有沒有正確傳下去", "should_trigger": false},
+  {"query": "C# 14 的 extension members 怎麼用?幫我把這個 static helper class 改寫成 extension", "should_trigger": false},
+  {"query": "幫我把這個 LINQ query 寫得更乾淨可讀一點,現在巢狀太多看不懂", "should_trigger": false},
+  {"query": "how do I write a unit test for this MongoDB repository using Testcontainers?", "should_trigger": false},
+  {"query": "這個 pattern matching 的 switch expression 我寫得對嗎?想確認 list pattern 的語法", "should_trigger": false},
+  {"query": "我想了解 .NET 10 有哪些新功能,大概介紹一下就好,不用很細", "should_trigger": false},
+  {"query": "幫我設計這個聚合根的 domain event,用我們的 DDD toolkit", "should_trigger": false},
+  {"query": "我這個 Dictionary lookup 偶爾會 KeyNotFoundException,幫我加上正確的錯誤處理", "should_trigger": false},
+  {"query": "把這段程式碼的變數命名改成符合 C# 慣例,然後加上 XML doc comment", "should_trigger": false}
+]
