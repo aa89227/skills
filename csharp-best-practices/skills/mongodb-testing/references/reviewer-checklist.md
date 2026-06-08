@@ -25,3 +25,20 @@ When reviewing MongoDB test code, you **must** use the Todo tool or create a che
 - [ ] MongoDB image version is pinned (e.g., `mongo:8.0`)
 - [ ] ReplicaSet is enabled (`.WithReplicaSet()`)
 - [ ] Test isolation via `DropDatabaseAsync()`, not container restart
+
+### Atlas Local / Atlas Search Tests
+- [ ] Uses `mongodb/mongodb-atlas-local:8.2.4` image (not `mongo:8.0`) when testing `$search` or `$vectorSearch`
+- [ ] No auth configured (`.WithUsername(null).WithPassword(null)`)
+- [ ] Wait strategy uses `.WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())`
+- [ ] Search indexes created once per test run (not per test)
+- [ ] Per-test cleanup uses `DeleteManyAsync` + wait for index removal (NOT `DropDatabaseAsync`)
+- [ ] Waits for search indexing after data insert (polls `$search` until count matches)
+- [ ] Waits for nested document field indexing when using `EmbeddedDocument` queries
+- [ ] Timeout and polling intervals are reasonable (2 min for index creation, 30s for data indexing)
+
+### Search Index Definition
+- [ ] Uses `SearchIndexDefinitionBuilder<T>` with strongly-typed lambda expressions
+- [ ] Custom analyzers registered via `WithCustomAnalyzer()` or `AtlasSearchAnalyzer` record
+- [ ] `VectorField` dimensions match the embedding model's output dimensionality
+- [ ] `Dynamic(false)` set when using explicit field mappings (avoids indexing unexpected fields)
+- [ ] Collection existence ensured before `CreateOneAsync` (MongoDB requires collection to exist)
