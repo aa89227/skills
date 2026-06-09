@@ -26,3 +26,14 @@ When reviewing API integration test code, you **must** use the Todo tool or crea
 - [ ] When bypassing API, use `Server.GetRequiredService<T>()` to resolve services from DI container
 - [ ] Shared setup helpers are placed in `TestHelper` as extension methods on `TestServer`
 - [ ] No duplicated setup logic that could be extracted into shared helpers
+
+### External Service Testing
+- [ ] External HTTP dependencies use `FakeHttpHandler` — not mocked via DI service replacement
+- [ ] Each external service has its own `FakeHttpHandler` instance on `TestServer`
+- [ ] Handler registered via `AddHttpMessageHandler(() => handler)` — factory delegate, not DI-resolved
+- [ ] Named client names match production registration
+- [ ] `ResetFakeHandlers()` called in `ApiTestBase.BeforeEach`
+- [ ] Responses queued **before** the test action (`EnqueueJsonResponse` / `EnqueueResponse`)
+- [ ] Request assertions done **after** the test action via `handler.Requests`
+- [ ] Error scenarios tested (e.g., external service returns 503)
+- [ ] "No call" scenarios verified with `Assert.That(handler.Requests, Is.Empty)`

@@ -4,7 +4,8 @@ description: |
   API integration testing with Verify snapshot testing patterns. Use when writing or reviewing
   API integration tests that use WebApplicationFactory, Testcontainers, typed HttpClient extensions,
   and Verify snapshot assertions. Trigger phrases: "API test", "integration test", "Verify snapshot",
-  "snapshot test", "WebApplicationFactory test", "VerifyJson", "typed HttpClient".
+  "snapshot test", "WebApplicationFactory test", "VerifyJson", "typed HttpClient",
+  "external service test", "FakeHttpHandler", "DelegatingHandler", "fake HTTP", "mock external API".
 license: MIT
 metadata:
   author: aa89227
@@ -24,7 +25,7 @@ metadata:
 - Use a **deterministic ID generator** (`FakeIdGenerator`) so snapshot output is reproducible across runs.
 - All HTTP operations go through **typed HttpClient extensions** — never construct URLs manually in tests.
 - Use **Verify snapshots** to assert API response shapes — avoid hand-written JSON assertions for complex responses.
-- **Do not mock or replace services via DI** — API tests should exercise the real application stack as-is.
+- **Do not mock or replace internal services via DI** — API tests exercise the real application stack. Exception: external HTTP dependencies use `FakeHttpHandler` (see External Service Testing).
 - **Prefer existing APIs for all data operations** — setup, action, and verification should all go through HTTP endpoints whenever possible. Only access the DI container as a last resort when no API exists for the operation.
 
 ## Infrastructure
@@ -233,6 +234,147 @@ internal static class TestHelper
    ```
    Mark such usage with a `// FIXME: no API available` comment so it can be replaced when an API is added.
 
+## External Service Testing
+
+When the API under test calls external services via `IHttpClientFactory`, use `DelegatingHandler` to intercept outgoing requests — verify request body/headers and return fake responses without hitting real services.
+
+### FakeHttpHandler
+
+Reusable handler that captures every outgoing request and returns queued responses:
+
+```csharp
+internal sealed class FakeHttpHandler : DelegatingHandler
+{
+    public List<CapturedRequest> Requests { get; } = [];
+    private readonly Queue<HttpResponseMessage> _responses = new();
+
+    public void EnqueueResponse(HttpStatusCode status = HttpStatusCode.OK)
+        => _responses.Enqueue(new HttpResponseMessage(status));
+
+    public void EnqueueJsonResponse<T>(T body, HttpStatusCode status = HttpStatusCode.OK)
+        => _responses.Enqueue(new HttpResponseMessage(status) { Content = JsonContent.Create(body) });
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken ct)
+    {
+        var body = request.Content is not null
+            ? await request.Content.ReadAsStringAsync(ct)
+            : null;
+
+        Requests.Add(new CapturedRequest(
+            request.Method,
+            request.RequestUri!,
+            body,
+            request.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value))));
+
+        return _responses.TryDequeue(out var response)
+            ? response
+            : new HttpResponseMessage(HttpStatusCode.OK);
+    }
+
+    public void Reset()
+    {
+        Requests.Clear();
+        _responses.Clear();
+    }
+
+    public sealed record CapturedRequest(
+        HttpMethod Method, Uri RequestUri, string? Body, Dictionary<string, string> Headers);
+}
+```
+
+Key points:
+- One `FakeHttpHandler` instance per external service — each service gets its own handler.
+- `EnqueueJsonResponse<T>` / `EnqueueResponse` — queue responses **before** the test action.
+- `Requests` — inspect captured requests **after** the test action.
+- `Reset()` — called in `[SetUp]` to clear state between tests.
+- Default response is `200 OK` when no response is queued.
+
+### Registration in TestServer
+
+```csharp
+internal class TestServer(InitialParameter param) : WebApplicationFactory<Program>
+{
+    internal FakeHttpHandler SmsHandler { get; } = new();
+    internal FakeHttpHandler PaymentHandler { get; } = new();
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddHttpClient("SmsService")
+                .AddHttpMessageHandler(() => SmsHandler);
+            services.AddHttpClient("PaymentService")
+                .AddHttpMessageHandler(() => PaymentHandler);
+        });
+    }
+
+    public void ResetFakeHandlers()
+    {
+        SmsHandler.Reset();
+        PaymentHandler.Reset();
+    }
+}
+```
+
+Key points:
+- Handler instances are **properties on TestServer** — tests access via `Server.SmsHandler`.
+- `AddHttpMessageHandler(() => handler)` — factory delegate, not DI-resolved, so handler lifetime is managed by TestServer.
+- Named client names must match production registration (e.g., `"SmsService"`).
+- `ResetFakeHandlers()` — called from `ApiTestBase.BeforeEach`.
+
+### ApiTestBase Reset
+
+Add `ResetFakeHandlers()` to the existing `[SetUp]`:
+
+```csharp
+[SetUp]
+public async Task BeforeEach()
+{
+    await Server.DropDatabaseAsync();
+    Server.ResetIdGenerator();
+    Server.ResetFakeHandlers();
+}
+```
+
+### Asserting Captured Requests
+
+**Verify request body with snapshot:**
+
+```csharp
+var captured = Server.SmsHandler.Requests[0];
+await VerifyJsonSnapshotAsync(captured.Body!, "Sms.SendNotificationRequest");
+```
+
+**Check specific headers:**
+
+```csharp
+var captured = Server.PaymentHandler.Requests[0];
+Assert.That(captured.Headers, Does.ContainKey("X-Api-Key"));
+Assert.That(captured.Headers["X-Api-Key"], Is.EqualTo("expected-key"));
+```
+
+**Snapshot the entire captured request:**
+
+```csharp
+var captured = Server.SmsHandler.Requests[0];
+var settings = new VerifySettings();
+settings.UseFileName("Sms.CapturedRequest");
+await Verify(new
+{
+    captured.Method,
+    PathAndQuery = captured.RequestUri.PathAndQuery,
+    captured.Body,
+    captured.Headers
+}, settings);
+```
+
+**Verify no request was sent:**
+
+```csharp
+Assert.That(Server.SmsHandler.Requests, Is.Empty);
+```
+
 ## Cheat Sheet
 
 | Topic | Pattern |
@@ -247,6 +389,10 @@ internal static class TestHelper
 | **DI access** | `Server.GetRequiredService<T>()` |
 | **File upload** | `TestHelper.PrepareUploadFile("fileName")` |
 | **Error assertion** | `await response.Content.GetProblemDetail()` |
+| **Fake external svc** | `Server.SmsHandler.EnqueueJsonResponse(body)` |
+| **Capture request** | `Server.SmsHandler.Requests[0].Body` |
+| **Check header** | `Assert.That(captured.Headers, Does.ContainKey("X-Api-Key"))` |
+| **No call sent** | `Assert.That(Server.SmsHandler.Requests, Is.Empty)` |
 
 ## Best Practices
 
@@ -264,6 +410,7 @@ internal static class TestHelper
 
 Complete `.cs` examples in `examples/`:
 - **`examples/complete-api-test.cs`** — End-to-end example showing typed HttpClient extension, TestHelper, and test class with Verify snapshots working together
+- **`examples/external-service-test.cs`** — FakeHttpHandler setup, TestServer registration, and tests verifying request body/headers against external services
 
 ### Reference Files
 
