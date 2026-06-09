@@ -32,8 +32,18 @@ When reviewing API integration test code, you **must** use the Todo tool or crea
 - [ ] Each external service has its own `FakeHttpHandler` instance on `TestServer`
 - [ ] Handler registered via `AddHttpMessageHandler(() => handler)` — factory delegate, not DI-resolved
 - [ ] Named client names match production registration
-- [ ] `ResetFakeHandlers()` called in `ApiTestBase.BeforeEach`
+- [ ] `ResetFakeHandlers()` called in per-test lifecycle
 - [ ] Responses queued **before** the test action (`EnqueueJsonResponse` / `EnqueueResponse`)
 - [ ] Request assertions done **after** the test action via `handler.Requests`
 - [ ] Error scenarios tested (e.g., external service returns 503)
-- [ ] "No call" scenarios verified with `Assert.That(handler.Requests, Is.Empty)`
+- [ ] "No call" scenarios verified with empty collection assertion
+
+### xUnit v3-specific (skip if using NUnit)
+- [ ] Uses `xunit.v3` package (not legacy `xunit` v2)
+- [ ] Uses `Verify.XunitV3` package (not deprecated `Verify.Xunit`)
+- [ ] `[CollectionDefinition]` exists with `ICollectionFixture<TestServer>`
+- [ ] Test class inherits `ApiTestBase(server)` with primary constructor
+- [ ] `IAsyncLifetime` methods return `ValueTask` (not `Task`)
+- [ ] `[Fact]` for individual tests, `[Theory]` for parameterized
+- [ ] Assert uses xUnit API (`Assert.Equal`, `Assert.Contains`, `Assert.Empty`)
+- [ ] No `[UsesVerify]` or `partial class` (not needed for xUnit)

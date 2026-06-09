@@ -5,22 +5,25 @@ description: |
   API integration tests that use WebApplicationFactory, Testcontainers, typed HttpClient extensions,
   and Verify snapshot assertions. Trigger phrases: "API test", "integration test", "Verify snapshot",
   "snapshot test", "WebApplicationFactory test", "VerifyJson", "typed HttpClient",
-  "external service test", "FakeHttpHandler", "DelegatingHandler", "fake HTTP", "mock external API".
+  "external service test", "FakeHttpHandler", "DelegatingHandler", "fake HTTP", "mock external API",
+  "xUnit test", "NUnit test".
 license: MIT
 metadata:
   author: aa89227
   version: "1.0"
-  tags: ["testing", "api", "verify", "snapshot", "integration-test", "nunit"]
+  tags: ["testing", "api", "verify", "snapshot", "integration-test", "nunit", "xunit"]
 ---
 
 # API Integration Testing with Verify Snapshots
 
-**Frameworks:** NUnit 4.x, Verify.NUnit, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
+**Frameworks:** NUnit 4.x + Verify.NUnit **or** xUnit v3 + Verify.XunitV3, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
+
+> **xUnit v2 note:** Replace `ValueTask` with `Task` and `[Collection<T>]` with `[Collection("name")]`.
 
 ## General Rules
 
-- All API tests **inherit from `ApiTestBase`** — provides singleton `TestServer` and `HttpClient`.
-- `[SetUp]` automatically resets database and ID generator before each test — **do not manually clean up**.
+- All API tests **inherit from `ApiTestBase`** — provides shared `TestServer` and `HttpClient`.
+- Per-test lifecycle automatically resets database and ID generator before each test — **do not manually clean up**.
 - JWT authentication is auto-attached to every `HttpClient` — **do not manually add auth headers**.
 - Use a **deterministic ID generator** (`FakeIdGenerator`) so snapshot output is reproducible across runs.
 - All HTTP operations go through **typed HttpClient extensions** — never construct URLs manually in tests.
@@ -31,6 +34,8 @@ metadata:
 ## Infrastructure
 
 ### ApiTestBase
+
+#### NUnit
 
 ```csharp
 public abstract class ApiTestBase
@@ -53,7 +58,35 @@ public abstract class ApiTestBase
 Key points:
 - `TestServer` is a **singleton** (`Lazy<T>`) — one container set for the entire test run.
 - `Client` creates a **new `HttpClient`** per access — each test gets a fresh client.
-- `BeforeEach` guarantees **full isolation**: clean database + reset deterministic IDs.
+- `[SetUp]` guarantees **full isolation**: clean database + reset deterministic IDs.
+
+#### xUnit v3
+
+```csharp
+[CollectionDefinition]
+public class ApiCollection : ICollectionFixture<TestServer>;
+
+[Collection<ApiCollection>]
+public abstract class ApiTestBase(TestServer server) : IAsyncLifetime
+{
+    internal TestServer Server { get; } = server;
+    protected HttpClient Client => Server.CreateClient();
+
+    public async ValueTask InitializeAsync()
+    {
+        await Server.DropDatabaseAsync();
+        Server.ResetIdGenerator();
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}
+```
+
+Key points:
+- `ICollectionFixture<TestServer>` — singleton TestServer shared across all test classes in the collection.
+- `[Collection<ApiCollection>]` — generic attribute (v3), type-safe, no magic strings. Inherited by derived classes.
+- `IAsyncLifetime.InitializeAsync` — per-test reset, equivalent to NUnit's `[SetUp]`. Returns `ValueTask`.
+- Primary constructor receives `TestServer` — xUnit auto-injects from collection fixture.
 
 ### TestServer (WebApplicationFactory)
 
@@ -72,6 +105,8 @@ Key points:
 - Config overrides via `AddInMemoryCollection` — connection strings, JWT settings, external service URLs.
 - All ID generators replaced with `Mock<IIdGenerator<T>>` backed by `FakeIdGenerator`.
 - `GetRequiredService<T>()` helper to resolve services from DI for direct data manipulation.
+
+> **xUnit note:** `ICollectionFixture<T>` requires a parameterless constructor. If TestServer needs constructor parameters, use default values or configure internally.
 
 ### FakeIdGenerator
 
@@ -145,6 +180,7 @@ public static class VerifyConfig
 
 - Snapshots stored in `Snapshots/` directory at project root.
 - `DiffRunner.Disabled = true` — no interactive diff tool popup during CI.
+- `[ModuleInitializer]` is a .NET attribute — works identically with NUnit and xUnit.
 
 ### Snapshot Assertion Helper
 
@@ -163,15 +199,22 @@ private async Task VerifyJsonSnapshotAsync(string json, string snapshotName)
 - `UseFileName(snapshotName)` — explicit snapshot name, not auto-generated.
 - `UseStrictJson()` — exact JSON match, no property ordering tolerance.
 - Naming convention: `"FeatureName.ScenarioDescription"` (e.g., `"Product.QueryByCategory"`).
+- NUnit uses `Verify.NUnit`; xUnit v3 uses `Verify.XunitV3` — the API is identical.
+- xUnit does **not** need `[UsesVerify]` or `partial class`.
 
 ## Test Structure
 
-### BDD-style with file-scoped static classes
+### NUnit
 
 ```csharp
 public sealed class FeatureNameAcceptanceTest : ApiTestBase
 {
     [Test]
+    [Description("""
+    Given: Some precondition
+    When: Some action
+    Then: Expected result
+    """)]
     public async Task ShouldReturnExpectedResultWhenConditionMet()
     {
         // Arrange
@@ -202,9 +245,51 @@ file static class When
 
 Rules:
 - Test class: `sealed`, inherits `ApiTestBase`.
-- Test methods: scenario description as method name — no suffix needed.
+- `[Test]` marks test methods.
+- `[Description]` carries BDD scenario in Given/When/Then format.
 - `file static class Given / When / Then` — file-scoped, not visible outside the file.
 - Simple scenarios can use `private` helper methods instead of Given/When/Then classes.
+
+### xUnit v3
+
+```csharp
+public sealed class FeatureNameAcceptanceTest(TestServer server) : ApiTestBase(server)
+{
+    [Fact]
+    public async Task ShouldReturnExpectedResultWhenConditionMet()
+    {
+        // Arrange
+        await Given.SystemHasSomeData();
+
+        // Act
+        var response = await When.PerformSomeAction();
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        await VerifyJsonSnapshotAsync(json, "FeatureName.ScenarioDescription");
+    }
+
+    private async Task VerifyJsonSnapshotAsync(string json, string snapshotName) { /* ... */ }
+}
+
+file static class Given
+{
+    public static async Task SystemHasSomeData() { /* setup via API */ }
+}
+
+file static class When
+{
+    public static async Task<HttpResponseMessage> PerformSomeAction() { /* HTTP call */ }
+}
+```
+
+Rules:
+- Test class: `sealed`, inherits `ApiTestBase(server)` with primary constructor.
+- `[Fact]` marks test methods; use `[Theory]` for parameterized tests.
+- No `[Description]` equivalent — use descriptive method names for BDD intent.
+- `file static class Given / When / Then` — identical to NUnit.
+- `[Collection<ApiCollection>]` inherited from `ApiTestBase` — no need to repeat.
 
 ### TestHelper (shared helpers)
 
@@ -287,7 +372,7 @@ Key points:
 - One `FakeHttpHandler` instance per external service — each service gets its own handler.
 - `EnqueueJsonResponse<T>` / `EnqueueResponse` — queue responses **before** the test action.
 - `Requests` — inspect captured requests **after** the test action.
-- `Reset()` — called in `[SetUp]` to clear state between tests.
+- `Reset()` — called in per-test lifecycle to clear state between tests.
 - Default response is `200 OK` when no response is queued.
 
 ### Registration in TestServer
@@ -321,15 +406,26 @@ Key points:
 - Handler instances are **properties on TestServer** — tests access via `Server.SmsHandler`.
 - `AddHttpMessageHandler(() => handler)` — factory delegate, not DI-resolved, so handler lifetime is managed by TestServer.
 - Named client names must match production registration (e.g., `"SmsService"`).
-- `ResetFakeHandlers()` — called from `ApiTestBase.BeforeEach`.
+- `ResetFakeHandlers()` — called from per-test lifecycle.
 
-### ApiTestBase Reset
+### Per-test Reset
 
-Add `ResetFakeHandlers()` to the existing `[SetUp]`:
+#### NUnit
 
 ```csharp
 [SetUp]
 public async Task BeforeEach()
+{
+    await Server.DropDatabaseAsync();
+    Server.ResetIdGenerator();
+    Server.ResetFakeHandlers();
+}
+```
+
+#### xUnit v3
+
+```csharp
+public async ValueTask InitializeAsync()
 {
     await Server.DropDatabaseAsync();
     Server.ResetIdGenerator();
@@ -348,10 +444,20 @@ await VerifyJsonSnapshotAsync(captured.Body!, "Sms.SendNotificationRequest");
 
 **Check specific headers:**
 
+#### NUnit
+
 ```csharp
 var captured = Server.PaymentHandler.Requests[0];
 Assert.That(captured.Headers, Does.ContainKey("X-Api-Key"));
 Assert.That(captured.Headers["X-Api-Key"], Is.EqualTo("expected-key"));
+```
+
+#### xUnit
+
+```csharp
+var captured = Server.PaymentHandler.Requests[0];
+Assert.Contains("X-Api-Key", captured.Headers);
+Assert.Equal("expected-key", captured.Headers["X-Api-Key"]);
 ```
 
 **Snapshot the entire captured request:**
@@ -371,18 +477,27 @@ await Verify(new
 
 **Verify no request was sent:**
 
+#### NUnit
+
 ```csharp
 Assert.That(Server.SmsHandler.Requests, Is.Empty);
 ```
 
+#### xUnit
+
+```csharp
+Assert.Empty(Server.SmsHandler.Requests);
+```
+
 ## Cheat Sheet
+
+### Common (Framework-agnostic)
 
 | Topic | Pattern |
 |---|---|
-| **Base class** | `class MyTest : ApiTestBase` |
 | **HTTP call** | `Client.Xxx().MethodAsync(request)` |
 | **Verify JSON** | `await VerifyJsonSnapshotAsync(json, "Feature.Scenario")` |
-| **Verify object** | `await Verifier.Verify(object)` |
+| **Verify object** | `await Verify(object)` |
 | **Snapshot name** | `"FeatureName.ScenarioDescription"` |
 | **Test method name** | `ShouldYWhenX()` |
 | **Shared setup** | `await Server.CreateSomeResource()` (TestHelper extension) |
@@ -391,8 +506,34 @@ Assert.That(Server.SmsHandler.Requests, Is.Empty);
 | **Error assertion** | `await response.Content.GetProblemDetail()` |
 | **Fake external svc** | `Server.SmsHandler.EnqueueJsonResponse(body)` |
 | **Capture request** | `Server.SmsHandler.Requests[0].Body` |
-| **Check header** | `Assert.That(captured.Headers, Does.ContainKey("X-Api-Key"))` |
-| **No call sent** | `Assert.That(Server.SmsHandler.Requests, Is.Empty)` |
+
+### NUnit-specific
+
+| Topic | Pattern |
+|---|---|
+| **Base class** | `class MyTest : ApiTestBase` |
+| **Test attribute** | `[Test]` |
+| **BDD description** | `[Description("""Given: … When: … Then: …""")]` |
+| **Per-test reset** | `[SetUp] public async Task BeforeEach()` |
+| **Assert equal** | `Assert.That(actual, Is.EqualTo(expected))` |
+| **Assert contains key** | `Assert.That(dict, Does.ContainKey(key))` |
+| **Assert empty** | `Assert.That(list, Is.Empty)` |
+| **Verify package** | `Verify.NUnit` |
+
+### xUnit v3-specific
+
+| Topic | Pattern |
+|---|---|
+| **Base class** | `class MyTest(TestServer s) : ApiTestBase(s)` |
+| **Test attribute** | `[Fact]` / `[Theory]` |
+| **BDD description** | Descriptive method naming (no attribute) |
+| **Per-test reset** | `IAsyncLifetime.InitializeAsync()` → `ValueTask` |
+| **Collection fixture** | `[CollectionDefinition]` + `ICollectionFixture<TestServer>` |
+| **Collection ref** | `[Collection<ApiCollection>]` (generic, type-safe) |
+| **Assert equal** | `Assert.Equal(expected, actual)` |
+| **Assert contains key** | `Assert.Contains(key, dict)` |
+| **Assert empty** | `Assert.Empty(list)` |
+| **Verify package** | `Verify.XunitV3` |
 
 ## Best Practices
 
@@ -409,8 +550,10 @@ Assert.That(Server.SmsHandler.Requests, Is.Empty);
 ### Example Files
 
 Complete `.cs` examples in `examples/`:
-- **`examples/complete-api-test.cs`** — End-to-end example showing typed HttpClient extension, TestHelper, and test class with Verify snapshots working together
-- **`examples/external-service-test.cs`** — FakeHttpHandler setup, TestServer registration, and tests verifying request body/headers against external services
+- **`examples/complete-api-test.cs`** — NUnit: typed HttpClient extension, TestHelper, and test class with Verify snapshots
+- **`examples/complete-api-test-xunit.cs`** — xUnit v3: same example adapted with `ICollectionFixture` and `IAsyncLifetime`
+- **`examples/external-service-test.cs`** — NUnit: FakeHttpHandler setup, TestServer registration, and request body/header assertion
+- **`examples/external-service-test-xunit.cs`** — xUnit v3: same external service tests adapted for xUnit
 
 ### Reference Files
 
