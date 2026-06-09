@@ -1,4 +1,4 @@
-# MongoDB Atlas Search Reference — v3.7.0
+# MongoDB Atlas Search Reference — v3.9.0
 
 ## Search Operators
 
@@ -43,6 +43,9 @@
 | `Filter` | Pre-filter with `FilterDefinition<T>` |
 | `Exact` | `true` for exact NN (ENN), `false` for ANN (default) |
 | `AutoEmbeddingModelName` | Model name for Atlas auto-embedding |
+| `NestedFilter` | Filter on nested documents during vector search (v3.8.0) |
+| `ReturnStoredSource` | Return stored source fields from Atlas Search (v3.8.0) |
+| `EmbeddedScoreMode` | Scoring function for embedded document results (v3.8.0) |
 
 ## RankFusion Overloads
 
@@ -51,6 +54,33 @@
 | Named Dictionary | `pipelines: Dictionary<string, Pipeline>`, `weights?: Dictionary<string, double>`, `options?` | Named pipelines with per-pipeline weights |
 | Tuple Array | `pipelinesWithWeights: (Pipeline, double?)[]`, `options?` | Auto-named with per-pipeline weights |
 | Array | `pipelines: Pipeline[]`, `options?` | Auto-named, equal weights |
+
+## ScoreFusion (v3.9.0)
+
+Like `$rankFusion` but uses score-based combination with configurable normalization instead of rank-based reciprocal fusion.
+
+| Overload | Parameters | Use Case |
+|---|---|---|
+| Named Dictionary | `pipelines: Dictionary<string, Pipeline>`, `normalization`, `weights?`, `options?` | Named pipelines with per-pipeline weights |
+| Tuple Array | `pipelinesWithWeights: (Pipeline, double?)[]`, `normalization`, `options?` | Auto-named with per-pipeline weights |
+| Array | `pipelines: Pipeline[]`, `normalization`, `options?` | Auto-named, equal weights |
+
+`ScoreFusionNormalization` values: `Sum`, `None`.
+
+## Rerank (v3.8.0)
+
+Re-scores results using an Atlas model (e.g., cross-encoder reranker).
+
+```
+PipelineStageDefinitionBuilder.Rerank(query, path, numDocsToRerank, model)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `query` | `RerankQuery` | The query to rerank against |
+| `path` | `Expression<Func<T, TField>>` | Field(s) to rerank on |
+| `numDocsToRerank` | `int` | Number of top docs to send to the model |
+| `model` | `string` | Atlas reranker model name |
 
 ## Atlas Search Index Types
 
@@ -67,6 +97,22 @@
 | `VectorSimilarity.Cosine` | Cosine similarity (normalized vectors) |
 | `VectorSimilarity.Euclidean` | Euclidean distance |
 | `VectorSimilarity.DotProduct` | Dot product (unit-normalized vectors) |
+
+### Vector Indexing Method (v3.9.0)
+
+| Value | Description |
+|---|---|
+| `VectorIndexingMethod.Hnsw` | Hierarchical navigable small world (default) |
+| `VectorIndexingMethod.Flat` | Exact brute-force search (slower, more accurate) |
+
+### Vector Index Stored Fields (v3.8.0)
+
+```csharp
+new CreateVectorSearchIndexModel<T>(...)
+    .WithIncludedStoredFields(x => x.Name, x => x.Description)
+    // or
+    .WithExcludedStoredFields(x => x.LargeBlob)
+```
 
 ## Notes
 

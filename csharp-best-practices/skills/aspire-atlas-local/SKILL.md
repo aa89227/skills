@@ -11,24 +11,28 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "2.0"
+  aspire-version: "13.4.2"
   tags: ["aspire", "mongodb", "atlas-local", "container", "custom-resource", "atlas-search"]
 ---
 
 # Aspire Custom Resource: MongoDB Atlas Local
 
 > Custom Aspire resource for `mongodb/mongodb-atlas-local` — supports `$search` and `$vectorSearch` out of the box.
+> Aspire.Hosting 13.4.x compatible.
 
 ## Quick Reference
 
 | Item | Value |
 |---|---|
 | Image | `mongodb/mongodb-atlas-local` |
-| Recommended tag | `8.2.4` |
+| Recommended tag | `8.2.6` |
 | Container port | `27017` |
 | Auth env vars | `MONGODB_INITDB_ROOT_USERNAME`, `MONGODB_INITDB_ROOT_PASSWORD` |
 | Connection string | `mongodb://{user}:{pass}@{host}:{port}` |
 | Database connection | `{parent}/{dbName}?directConnection=true&authSource=admin` |
+| Aspire.Hosting | `13.4.x` |
+| Volume mounts | `/data/db`, `/data/configdb`, `/data/mongot` |
 
 ## Core Rules
 
@@ -37,6 +41,7 @@ metadata:
 - Use `ContainerLifetime.Persistent` for development — Atlas Local is slow to start.
 - Database sub-resource connection string **must** include `?directConnection=true&authSource=admin`.
 - Password follows Aspire convention — auto-generated via `CreateDefaultPasswordParameter` when not provided.
+- `ParameterResource.Value` is deprecated in Aspire 13.x — pass the resource directly to `WithEnvironment` or use `GetValueAsync()` for async access. The `AddMongoDbAtlasLocal` extension below reads hostname synchronously during builder registration, which is acceptable at that stage; avoid `.Value` in runtime/callback contexts.
 
 ## Resource: MongoDbAtlasLocalResource
 
@@ -111,6 +116,9 @@ public static IResourceBuilder<MongoDbAtlasLocalResource> AddMongoDbAtlasLocal(
     IResourceBuilder<ParameterResource>? hostname = null)
 {
     // Read hostname from parameter or config fallback
+    // NOTE: ParameterResource.Value is deprecated in Aspire 13.x.
+    // Reading during builder registration (synchronous init) is acceptable;
+    // avoid .Value in runtime callbacks — use the resource reference directly.
     var hostnameValue = hostname is not null
         ? hostname.Resource.Value
         : builder.Configuration["MONGO_ATLAS_HOSTNAME"];
@@ -125,7 +133,7 @@ public static IResourceBuilder<MongoDbAtlasLocalResource> AddMongoDbAtlasLocal(
 
     var rb = builder.AddResource(resource)
         .WithImage("mongodb/mongodb-atlas-local")
-        .WithImageTag("8.2.4")
+        .WithImageTag("8.2.6")
         .WithEndpoint(port: port, targetPort: 27017,
             name: MongoDbAtlasLocalResource.PrimaryEndpointName)
         .WithEnvironment(context =>
@@ -192,11 +200,16 @@ var password = builder.AddParameter("mongo-password", secret: true);
 var mongo = builder.AddMongoDbAtlasLocal("mongodb-atlas-local",
         port: 27027, userName: username, password: password)
     .WithAtlasDataVolume("mongo-atlas-local-data")
+    .WithSearchVolume("mongo-atlas-local-mongot")
     .WithLifetime(ContainerLifetime.Persistent);
 
 var appDb = mongo.AddDatabase("AppMongoDb", "my-app-db");
 var analyticsDb = mongo.AddDatabase("AnalyticsMongoDb", "analytics-db");
 ```
+
+Complete volumes for Atlas Local:
+- **`/data/db`** + **`/data/configdb`** — via `WithAtlasDataVolume` (both mounted together).
+- **`/data/mongot`** — via `WithSearchVolume` (Atlas Search index persistence, add when using `$search`/`$vectorSearch`).
 
 ## Connecting Backend Projects
 
@@ -261,7 +274,7 @@ Pattern:
 
 ## Best Practices
 
-1. **Pin the image tag** — always `.WithImageTag("8.2.4")`, never use `latest`.
+1. **Pin the image tag** — always `.WithImageTag("8.2.6")`, never use `latest`.
 2. **Use `ContainerLifetime.Persistent`** for dev — Atlas Local is slow to start; persistent avoids restarts.
 3. **Set hostname for stable replica set** — without it, container restart changes the hostname, breaking connections.
 4. **Use `directConnection=true`** for database resources — single-node replica set; avoids topology discovery delays.
@@ -269,6 +282,8 @@ Pattern:
 6. **Mount data + configdb volumes** — `WithAtlasDataVolume` mounts both `/data/db` and `/data/configdb`.
 7. **Mount search volume separately** — `WithSearchVolume` mounts `/data/mongot` for Atlas Search index persistence.
 8. **Env var difference from standard mongo** — `MONGODB_INITDB_ROOT_*` (with `DB`), not `MONGO_INITDB_ROOT_*`.
+9. **`ParameterResource.Value` is deprecated** — in Aspire 13.x, prefer passing the resource reference directly. Reading `.Value` during synchronous builder registration is tolerable; avoid in runtime callbacks.
+10. **`Aspire.Hosting.NodeJs` is deprecated** — use `Aspire.Hosting.JavaScript` (13.4.x) with `AddJavaScriptApp` instead of `AddNpmApp`.
 
 ## Additional Resources
 

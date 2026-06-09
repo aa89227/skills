@@ -1,4 +1,4 @@
-// MongoDB C# Driver v3.7.0 — Transactions & DI Registration
+// MongoDB C# Driver v3.9.0 — Transactions & DI Registration
 // Demonstrates: WithTransactionAsync (recommended), manual transaction,
 //   ASP.NET Core DI registration
 

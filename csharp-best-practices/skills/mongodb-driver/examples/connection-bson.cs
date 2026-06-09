@@ -1,4 +1,4 @@
-// MongoDB C# Driver v3.7.0 — Connection & BSON Model
+// MongoDB C# Driver v3.9.0 — Connection & BSON Model
 // Demonstrates: MongoClient constructors, get database/collection,
 //   typed document with attributes, BsonDocument (untyped)
 

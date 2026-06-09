@@ -1,4 +1,4 @@
-// MongoDB C# Driver v3.7.0 — Atlas Search ($search stage)
+// MongoDB C# Driver v3.9.0 — Atlas Search ($search stage)
 // Demonstrates: text, phrase, compound, autocomplete,
 //   SearchOptions (index, score, highlight, pagination)
 

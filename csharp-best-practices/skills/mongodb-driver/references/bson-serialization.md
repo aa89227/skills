@@ -1,4 +1,4 @@
-# MongoDB BSON Serialization Reference — v3.7.0
+# MongoDB BSON Serialization Reference — v3.9.0
 
 ## BSON Attributes
 

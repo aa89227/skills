@@ -1,4 +1,4 @@
-// MongoDB C# Driver v3.7.0 — Builders
+// MongoDB C# Driver v3.9.0 — Builders
 // Demonstrates: Filter, Update, Sort, Projection builders
 
 using MongoDB.Bson;

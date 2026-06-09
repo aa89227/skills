@@ -1,4 +1,4 @@
-// MongoDB C# Driver v3.7.0 — LINQ & Aggregation Pipeline
+// MongoDB C# Driver v3.9.0 — LINQ & Aggregation Pipeline
 // Demonstrates: AsQueryable LINQ, fluent Aggregate(), BsonDocument pipeline,
 //   BulkWrite, Index creation, Change Streams
 

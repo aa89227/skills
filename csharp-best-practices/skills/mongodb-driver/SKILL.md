@@ -11,15 +11,15 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "3.0"
-  driver-version: "3.7.0"
+  version: "4.0"
+  driver-version: "3.9.0"
   tags: ["csharp", "dotnet", "mongodb", "nosql", "database", "driver"]
   trigger_keywords: ["MongoDB", "MongoClient", "IMongoCollection", "BsonDocument", "Builders", "MongoDB.Driver", "Atlas Search", "VectorSearch", "RankFusion", "GridFS", "BsonClassMap"]
 ---
 
-# MongoDB C# Driver — v3.7.0
+# MongoDB C# Driver — v3.9.0
 
-> Verified against `v3.7.0` tag of `mongodb/mongo-csharp-driver`.
+> Verified against `v3.9.0` tag of `mongodb/mongo-csharp-driver`.
 
 ## Quick Reference
 
@@ -29,7 +29,7 @@ metadata:
 | Namespace | `MongoDB.Driver`, `MongoDB.Bson` |
 | Requires | .NET 8+ recommended, .NET Standard 2.1 |
 | Docs | `mongodb.com/docs/drivers/csharp/current/` |
-| API | `mongodb.github.io/mongo-csharp-driver/3.7.0/api/` |
+| API | `mongodb.github.io/mongo-csharp-driver/3.9.0/api/` |
 
 ## Core Rules
 
@@ -69,6 +69,8 @@ metadata:
 | Compound search | `Builders<T>.Search.Compound().Must(...).Should(...)` |
 | Vector search | `collection.Aggregate().VectorSearch(field, queryVector, limit, options)` |
 | RankFusion | `collection.Aggregate().RankFusion<T,T>(pipelines, weights?, options?)` |
+| ScoreFusion | `PipelineStageDefinitionBuilder.ScoreFusion(pipelines, normalization, weights?, options?)` |
+| Rerank | `PipelineStageDefinitionBuilder.Rerank(query, path, numDocs, model)` |
 | Search index | `collection.SearchIndexes.CreateOneAsync(model)` |
 | GridFS upload | `bucket.UploadFromStreamAsync(filename, stream)` |
 | GridFS download | `bucket.DownloadToStreamAsync(fileId, stream)` |
@@ -76,15 +78,18 @@ metadata:
 | ClassMap | `BsonClassMap.RegisterClassMap<T>(cm => { ... })` |
 | DI singleton | `services.AddSingleton<IMongoClient>(new MongoClient(...))` |
 
-## v3.7.0 Highlights
+## v3.9.0 Highlights
 
-- OpenTelemetry tracing support
+- OpenTelemetry tracing support (since v3.7.0)
 - Snapshot session with specific `SnapshotTime`
 - `Enumerable.Reverse()` support for .NET 10
 - Nullable numeric/char filter comparisons
 - `KnownSerializerFinder` expression pre-analysis optimization
 - `ConnectAsync` in synchronous path to reduce deadlocks
 - Memory allocation optimizations (disposer structs, byte array reuse)
+- LINQ `DefaultIfEmpty` / `Zip` translation improvements (v3.8.0)
+- `AutoEmbeddingVectorSearch` stage support (v3.8.0)
+- `ClientBulkWrite` API for multi-collection bulk operations (v3.9.0)
 
 ## Additional Resources
 
@@ -96,7 +101,7 @@ Complete, runnable `.cs` examples in `examples/`:
 - **`examples/builders.cs`** — All Filter/Update/Sort/Projection builder operators
 - **`examples/aggregation-linq.cs`** — LINQ queries, fluent Aggregate, BsonDocument pipeline, BulkWrite, Index creation, Change Streams
 - **`examples/atlas-search.cs`** — Text, Phrase, Compound, Autocomplete, SearchMeta/Facets, SearchOptions
-- **`examples/vector-rankfusion.cs`** — VectorSearch, RankFusion (3 overloads), Atlas Search Index management, GridFS
+- **`examples/vector-rankfusion.cs`** — VectorSearch, RankFusion (3 overloads), ScoreFusion (v3.9.0), Rerank (v3.8.0), Atlas Search Index management, GridFS
 - **`examples/transactions-di.cs`** — WithTransactionAsync, manual transaction, ASP.NET Core DI registration
 
 ### Reference Files

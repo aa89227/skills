@@ -1,6 +1,6 @@
-// MongoDB C# Driver v3.7.0 — Vector Search & RankFusion
-// Demonstrates: $vectorSearch, $rankFusion (3 overloads),
-//   Atlas Search Indexes (create/list/update/drop)
+// MongoDB C# Driver v3.9.0 — Vector Search, RankFusion & ScoreFusion
+// Demonstrates: $vectorSearch, $rankFusion (3 overloads), $scoreFusion (v3.9.0),
+//   $rerank (v3.8.0), Atlas Search Indexes (create/list/update/drop)
 
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -25,6 +25,8 @@ var vectorResults = await collection.Aggregate()
             Filter = Builders<Product>.Filter.Eq(p => p.Category, "electronics"),
             // Exact = true,                     // ENN: exact nearest-neighbor (slower)
             // AutoEmbeddingModelName = "voyage-4", // Atlas auto-embedding
+            // NestedFilter = ...,               // v3.8.0: filter on nested docs during vector search
+            // ReturnStoredSource = true,         // v3.8.0: return stored fields from index
         })
     .Project(Builders<Product>.Projection.Include(p => p.Name).Include(p => p.Description))
     .ToListAsync();
@@ -82,6 +84,38 @@ var rankFusion3 = await collection.Aggregate()
         pipelines: new[] { textPipeline, vectorPipeline })
     .ToListAsync();
 
+// --- ScoreFusion (v3.9.0 — score-based combination, unlike rank-based RankFusion) ---
+
+var scoreFusion = await collection.Aggregate()
+    .ScoreFusion<Product, Product>(
+        pipelines: new Dictionary<string, PipelineDefinition<Product, Product>>
+        {
+            ["text_search"]   = textPipeline,
+            ["vector_search"] = vectorPipeline,
+        },
+        normalization: ScoreFusionNormalization.Sum,
+        weights: new Dictionary<string, double>
+        {
+            ["text_search"]   = 0.3,
+            ["vector_search"] = 0.7,
+        })
+    .ToListAsync();
+
+// --- Rerank (v3.8.0 — re-score top results using Atlas cross-encoder model) ---
+
+var reranked = await collection.Aggregate()
+    .VectorSearch(
+        field: "embedding",
+        queryVector: QueryVector.Create(embedding),
+        limit: 50,
+        options: new VectorSearchOptions<Product> { IndexName = "my_vector_index" })
+    .AppendStage(PipelineStageDefinitionBuilder.Rerank<Product, string>(
+        query: new RerankQuery("wireless headphones"),
+        path: p => p.Description,
+        numDocsToRerank: 20,
+        model: "my-reranker-model"))
+    .ToListAsync();
+
 // --- Atlas Search Indexes ---
 
 // Create full-text search index
@@ -102,6 +136,16 @@ await collection.SearchIndexes.CreateOneAsync(
         similarity: VectorSimilarity.Cosine,
         filterFields: p => p.Category));
 
+// Create vector search index with stored fields (v3.8.0)
+await collection.SearchIndexes.CreateOneAsync(
+    new CreateVectorSearchIndexModel<Product>(
+        field: p => p.Embedding,
+        name: "my_vector_stored_index",
+        dimensions: 1536,
+        similarity: VectorSimilarity.Cosine,
+        filterFields: p => p.Category)
+    .WithIncludedStoredFields(p => p.Name, p => p.Description));
+
 // Create auto-embedding vector index (Atlas)
 await collection.SearchIndexes.CreateOneAsync(
     new CreateAutoEmbeddingVectorSearchIndexModel<Product>(
@@ -112,6 +156,41 @@ await collection.SearchIndexes.CreateOneAsync(
 // List search indexes
 using var cursor = await collection.SearchIndexes.ListAsync();
 var indexes = await cursor.ToListAsync();
+
+// --- Wait for search index READY (required after CreateOneAsync) ---
+
+async Task WaitForSearchIndexReadyAsync(
+    IMongoCollection<Product> coll, string indexName, TimeSpan? timeout = null)
+{
+    var deadline = TimeSpan.FromMinutes(2);
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+
+    while (sw.Elapsed < (timeout ?? deadline))
+    {
+        using var idxCursor = await coll.SearchIndexes.ListAsync();
+        var idxList = await idxCursor.ToListAsync();
+        var idx = idxList.FirstOrDefault(x => x["name"].AsString == indexName);
+
+        if (idx is not null)
+        {
+            var status = idx.GetValue("status", "UNKNOWN").AsString;
+            if (status == "READY") return;
+            if (status == "FAILED")
+                throw new InvalidOperationException($"Search index creation failed: {idx}");
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+
+    throw new TimeoutException($"Search index '{indexName}' not READY within timeout");
+}
+
+// Usage: create index then wait
+await collection.SearchIndexes.CreateOneAsync(
+    new CreateSearchIndexModel(
+        "my_new_index",
+        new BsonDocument { { "mappings", new BsonDocument("dynamic", true) } }));
+await WaitForSearchIndexReadyAsync(collection, "my_new_index");
 
 // Update search index
 await collection.SearchIndexes.UpdateAsync(

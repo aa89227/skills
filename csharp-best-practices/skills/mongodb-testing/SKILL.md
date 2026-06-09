@@ -14,13 +14,15 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
+  version: "3.0"
+  testcontainers-version: "4.12.0"
+  driver-version: "3.9.0"
   tags: ["testing", "mongodb", "testcontainers", "bson", "integration-test", "verify", "atlas-local", "atlas-search"]
 ---
 
 # MongoDB Integration Testing
 
-**Frameworks:** NUnit 4.x, Testcontainers.MongoDb, MongoDB.Driver 3.x, Verify.NUnit
+**Frameworks:** NUnit 4.x, xUnit 2.x, Testcontainers.MongoDb 4.12.0, MongoDB.Driver 3.9.0, Verify.NUnit / Verify.Xunit
 
 Complements the **`mongodb-strongly-typed`** skill — this skill covers the **testing** side.
 
@@ -43,8 +45,7 @@ private MongoDbContainer? _mongoDbContainer;
 private void InitialMongoDb()
 {
     if (_mongoDbContainer != null) return;
-    _mongoDbContainer = new MongoDbBuilder()
-        .WithImage("mongo:8.0")
+    _mongoDbContainer = new MongoDbBuilder("mongo:8.0")
         .WithReplicaSet()  // Required for transactions / change streams
         .Build();
     _mongoDbContainer.StartAsync().Wait();
@@ -52,13 +53,15 @@ private void InitialMongoDb()
 ```
 
 Key points:
-- **`mongo:8.0`** image — pin major version for reproducibility.
+- **`new MongoDbBuilder("mongo:8.0")`** — image **must** be passed in constructor (parameterless constructor deprecated since Testcontainers 4.10.0).
 - **`.WithReplicaSet()`** — enables transactions and change streams support.
 - **Lazy initialization** — container only starts when first test runs.
 
 ### Atlas Local Container (Atlas Search / Vector Search)
 
-When tests require `$search` or `$vectorSearch`, use `mongodb/mongodb-atlas-local` instead of `mongo:8.0`:
+When tests require `$search` or `$vectorSearch`, use `mongodb/mongodb-atlas-local` instead of `mongo:8.0`.
+
+#### No-Auth Mode (recommended for tests)
 
 ```csharp
 public sealed class MongoDbContainerManager : IAsyncDisposable
@@ -68,9 +71,8 @@ public sealed class MongoDbContainerManager : IAsyncDisposable
 
     public MongoDbContainerManager()
     {
-        _container = new MongoDbBuilder()
-            .WithImage("mongodb/mongodb-atlas-local:8.2.4")
-            .WithUsername(null)   // Atlas Local — no auth required
+        _container = new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6")
+            .WithUsername(null)   // Atlas Local — no auth
             .WithPassword(null)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())
             .Build();
@@ -92,9 +94,48 @@ public sealed class MongoDbContainerManager : IAsyncDisposable
 }
 ```
 
+#### Auth Mode (matches Aspire dev resource)
+
+When the Aspire AppHost uses `MONGODB_INITDB_ROOT_USERNAME` / `MONGODB_INITDB_ROOT_PASSWORD`, tests should mirror this:
+
+```csharp
+public sealed class MongoDbContainerManager : IAsyncDisposable
+{
+    private readonly MongoDbContainer _container;
+    private readonly string _connectionString;
+
+    public MongoDbContainerManager(string username = "admin", string password = "test-password")
+    {
+        _container = new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6")
+            .WithUsername(username)
+            .WithPassword(password)
+            .WithEnvironment("MONGODB_INITDB_ROOT_USERNAME", username)
+            .WithEnvironment("MONGODB_INITDB_ROOT_PASSWORD", password)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())
+            .Build();
+
+        _container.StartAsync().Wait();
+        _connectionString = _container.GetConnectionString();
+    }
+
+    public string GetConnectionString() => _connectionString;
+
+    public async Task DropDatabaseAsync(string databaseName)
+    {
+        var settings = MongoClientSettings.FromConnectionString(_connectionString);
+        var client = new MongoClient(settings);
+        await client.DropDatabaseAsync(databaseName);
+    }
+
+    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+}
+```
+
 Key differences from `mongo:8.0`:
-- **No auth** — `.WithUsername(null).WithPassword(null)`.
-- **Health check wait** — `.WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())` instead of default.
+- **Image in constructor** — `new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6")`.
+- **No-auth mode** — `.WithUsername(null).WithPassword(null)` (simplest for tests).
+- **Auth mode** — set `MONGODB_INITDB_ROOT_USERNAME` / `MONGODB_INITDB_ROOT_PASSWORD` env vars (note the extra `DB` — standard `mongo` image uses `MONGO_INITDB_ROOT_*`).
+- **Health check wait** — `.WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())` — Atlas Local has a built-in `HEALTHCHECK`.
 - **Atlas Search / Vector Search** — supports `$search` and `$vectorSearch` pipeline stages.
 - **No `.WithReplicaSet()`** — Atlas Local automatically runs as a replica set.
 
@@ -103,9 +144,9 @@ Key differences from `mongo:8.0`:
 | Feature needed | Image |
 |---|---|
 | CRUD, transactions, change streams | `mongo:8.0` + `.WithReplicaSet()` |
-| `$search`, `$vectorSearch`, `$rankFusion` | `mongodb/mongodb-atlas-local:8.2.4` |
+| `$search`, `$vectorSearch`, `$rankFusion` | `mongodb/mongodb-atlas-local:8.2.6` |
 
-### Singleton Pattern
+### Singleton Pattern (NUnit)
 
 ```csharp
 // Container lives for the entire test run
@@ -122,6 +163,116 @@ public async Task BeforeEach()
 - `Lazy<T>` ensures one container instance for all tests.
 - `DropDatabaseAsync()` is fast enough for per-test isolation (faster than container restart).
 - No `[TearDown]` or `DisposeAsync` needed — container lives for the process lifetime.
+
+### xUnit Fixture Pattern
+
+xUnit uses `IAsyncLifetime` with `IClassFixture<T>` or `ICollectionFixture<T>`:
+
+```csharp
+// Fixture — shared across all tests in the class (or collection)
+public sealed class MongoDbFixture : IAsyncLifetime
+{
+    private readonly MongoDbContainer _container =
+        new MongoDbBuilder("mongo:8.0")
+            .WithReplicaSet()
+            .Build();
+
+    public string ConnectionString => _container.GetConnectionString();
+
+    public async ValueTask InitializeAsync()
+        => await _container.StartAsync();
+
+    public async ValueTask DisposeAsync()
+        => await _container.DisposeAsync();
+}
+
+// Test class — inject fixture via constructor
+public class OrderRepositoryTests : IClassFixture<MongoDbFixture>, IAsyncLifetime
+{
+    private readonly MongoDbFixture _fixture;
+    private IMongoDatabase _database = null!;
+
+    public OrderRepositoryTests(MongoDbFixture fixture) => _fixture = fixture;
+
+    public async ValueTask InitializeAsync()
+    {
+        var client = new MongoClient(_fixture.ConnectionString);
+        _database = client.GetDatabase("TestDb");
+        await _database.Client.DropDatabaseAsync("TestDb");
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    [Fact]
+    public async Task InsertAndFind()
+    {
+        var collection = _database.GetCollection<Order>("orders");
+        await collection.InsertOneAsync(new Order { Id = "1", Total = 100m });
+
+        var found = await collection.Find(x => x.Id == "1").FirstOrDefaultAsync();
+        Assert.NotNull(found);
+        Assert.Equal(100m, found.Total);
+    }
+}
+```
+
+For sharing across multiple test classes, use `ICollectionFixture<T>`:
+
+```csharp
+[CollectionDefinition("MongoDB")]
+public class MongoDbCollection : ICollectionFixture<MongoDbFixture>;
+
+[Collection("MongoDB")]
+public class OrderTests
+{
+    private readonly MongoDbFixture _fixture;
+    public OrderTests(MongoDbFixture fixture) => _fixture = fixture;
+
+    [Fact]
+    public async Task SomeTest() { /* ... */ }
+}
+
+[Collection("MongoDB")]
+public class ProductTests
+{
+    private readonly MongoDbFixture _fixture;
+    public ProductTests(MongoDbFixture fixture) => _fixture = fixture;
+    // ...
+}
+```
+
+#### Atlas Local xUnit Fixture
+
+```csharp
+public sealed class AtlasLocalFixture : IAsyncLifetime
+{
+    private readonly MongoDbContainer _container =
+        new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6")
+            .WithUsername(null)
+            .WithPassword(null)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy())
+            .Build();
+
+    public string ConnectionString => _container.GetConnectionString();
+    private bool _indexesCreated;
+
+    public async ValueTask InitializeAsync()
+    {
+        await _container.StartAsync();
+        if (!_indexesCreated)
+        {
+            await CreateSearchIndexesAsync();
+            await WaitForSearchIndexReadyAsync();
+            _indexesCreated = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+        => await _container.DisposeAsync();
+
+    // ... CreateSearchIndexesAsync / WaitForSearchIndexReadyAsync
+}
+```
 
 ### SearchTestBase Pattern (Atlas Search)
 
@@ -715,8 +866,8 @@ Pattern:
 
 | Topic | Pattern |
 |---|---|
-| **Container (standard)** | `new MongoDbBuilder().WithImage("mongo:8.0").WithReplicaSet().Build()` |
-| **Container (Atlas Local)** | `new MongoDbBuilder().WithImage("mongodb/mongodb-atlas-local:8.2.4").WithUsername(null).WithPassword(null).WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy()).Build()` |
+| **Container (standard)** | `new MongoDbBuilder("mongo:8.0").WithReplicaSet().Build()` |
+| **Container (Atlas Local, no-auth)** | `new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6").WithUsername(null).WithPassword(null).WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy()).Build()` |
 | **Isolation (standard)** | `DropDatabaseAsync()` in `[SetUp]` |
 | **Isolation (Atlas Search)** | `DeleteManyAsync(Filter.Empty)` + wait for index removal in `[SetUp]` |
 | **Get collection** | `server.GetRequiredService<DbContext>().GetCollection<TDto>()` |
@@ -738,20 +889,22 @@ Pattern:
 
 ## Best Practices
 
-1. **Singleton container** — one per test run, `Lazy<T>`, never per-test.
+1. **Singleton container** — one per test run, `Lazy<T>` (NUnit) or `ICollectionFixture<T>` (xUnit), never per-test.
 2. **Drop database, not container** — `DropDatabaseAsync()` is faster than container restart.
 3. **Pin MongoDB image version** — avoid surprise failures from image updates.
-4. **Enable ReplicaSet** — even if not using transactions now, prevents future migration pain.
-5. **Strongly-typed everything** — no magic strings in filters, updates, or projections.
-6. **Typed DTOs over BsonDocument** — for insert and query operations in tests.
-7. **Deterministic test data** — fixed IDs, fixed dates, no random values.
-8. **Sample factory coverage guard** — reflection test to catch missing samples automatically.
-9. **Namespace-grouped snapshots** — one snapshot test per aggregate/module for manageable diffs.
-10. **Use Atlas Local for search tests** — `mongodb/mongodb-atlas-local:8.2.4` supports `$search` and `$vectorSearch`.
-11. **Never `DropDatabaseAsync` with search indexes** — use `DeleteManyAsync` + wait for index removal instead.
-12. **Create search indexes once per test run** — indexes are expensive; share via singleton container.
-13. **Always wait for search indexing** — Atlas Search is eventually consistent; poll with `$search` after insert.
-14. **Wait for nested fields separately** — `EmbeddedDocument` fields index independently; verify with actual query filters.
+4. **Pass image in constructor** — `new MongoDbBuilder("mongo:8.0")` — parameterless constructor is deprecated since Testcontainers 4.10.0.
+5. **Enable ReplicaSet** — even if not using transactions now, prevents future migration pain.
+6. **Strongly-typed everything** — no magic strings in filters, updates, or projections.
+7. **Typed DTOs over BsonDocument** — for insert and query operations in tests.
+8. **Deterministic test data** — fixed IDs, fixed dates, no random values.
+9. **Sample factory coverage guard** — reflection test to catch missing samples automatically.
+10. **Namespace-grouped snapshots** — one snapshot test per aggregate/module for manageable diffs.
+11. **Use Atlas Local for search tests** — `mongodb/mongodb-atlas-local:8.2.6` supports `$search` and `$vectorSearch`.
+12. **Never `DropDatabaseAsync` with search indexes** — use `DeleteManyAsync` + wait for index removal instead.
+13. **Create search indexes once per test run** — indexes are expensive; share via singleton container / fixture.
+14. **Always wait for search indexing** — Atlas Search is eventually consistent; poll with `$search` after insert.
+15. **Wait for nested fields separately** — `EmbeddedDocument` fields index independently; verify with actual query filters.
+16. **Atlas Local auth mode** — use no-auth for simple tests; use auth mode (`MONGODB_INITDB_ROOT_USERNAME/PASSWORD`) when mirroring Aspire dev resource configuration.
 
 ## Additional Resources
 
