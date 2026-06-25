@@ -14,13 +14,13 @@ PLAYWRIGHT_RECORD_VIDEO=true dotnet test
 
 ## AspireFixture Changes
 
-Add video support to the fixture's `NewPageAsync`:
+Add video support to the fixture's `NewContextAsync`:
 
 ```csharp
 public static bool IsVideoEnabled =>
     Environment.GetEnvironmentVariable("PLAYWRIGHT_RECORD_VIDEO") is "true" or "1";
 
-public async Task<IPage> NewPageAsync()
+public async Task<IBrowserContext> NewContextAsync()
 {
     if (_browser is null) throw new InvalidOperationException("Browser not initialized");
 
@@ -39,32 +39,66 @@ public async Task<IPage> NewPageAsync()
         options.RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 };
     }
 
-    var context = await _browser.NewContextAsync(options);
-    return await context.NewPageAsync();
+    return await _browser.NewContextAsync(options);
 }
 ```
 
-## Test Class Changes
+## Test Method Changes
 
-Capture the test method name in `InitializeAsync` and save the video in `DisposeAsync`:
+### With ICollectionFixture (primary pattern)
+
+Save the video before disposing the context. Use `TestContext.Current.TestMethod?.MethodName` (xUnit v3) to name the output folder:
+
+```csharp
+[Collection(E2ECollection.Name)]
+public sealed class MyFeatureE2ETests(AspireFixture fixture)
+{
+    [Fact]
+    public async Task ShouldCreateItemSuccessfully()
+    {
+        await fixture.ResetDatabaseAsync();
+        await using var context = await fixture.NewContextAsync();
+        var page = await context.NewPageAsync();
+
+        // ... test logic ...
+
+        await SaveVideoAsync(page);
+    }
+
+    private static async Task SaveVideoAsync(IPage page)
+    {
+        if (!AspireFixture.IsVideoEnabled || page.Video is null) return;
+
+        var methodName = TestContext.Current.TestMethod?.MethodName ?? "unknown";
+        var videoDir = Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "videos", methodName);
+        Directory.CreateDirectory(videoDir);
+        await page.Video.SaveAsAsync(Path.Combine(videoDir, "test.webm"));
+    }
+}
+```
+
+### With IClassFixture + IAsyncLifetime (alternative)
 
 ```csharp
 public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLifetime
 {
     private readonly AspireFixture _fixture;
+    private IBrowserContext _context = null!;
     private IPage _page = null!;
     private string _testMethodName = string.Empty;
 
     public MyFeatureE2ETests(AspireFixture fixture) => _fixture = fixture;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _testMethodName = TestContext.Current.TestMethod?.MethodName ?? "unknown";
-        await ResetDatabaseAsync();
-        _page = await _fixture.NewPageAsync();
+        await _fixture.ResetDatabaseAsync();
+        _context = await _fixture.NewContextAsync();
+        _page = await _context.NewPageAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (AspireFixture.IsVideoEnabled && _page.Video is not null)
         {
@@ -74,7 +108,7 @@ public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLife
             await _page.Video.SaveAsAsync(Path.Combine(videoDir, "test.webm"));
         }
 
-        await _page.Context.DisposeAsync();
+        await _context.DisposeAsync();
     }
 }
 ```
@@ -95,9 +129,9 @@ videos/
 
 **`PathAsync()` throws on remote connections** — never use `page.Video.PathAsync()` with Docker run-server. Always use `SaveAsAsync(localPath)`.
 
-**Capture test method name in `InitializeAsync`** — use `TestContext.Current.TestMethod?.MethodName` (xUnit v3) to get the method name. Store the **string value** in a field for use in `DisposeAsync`. The `TestContext` itself is a moment-in-time snapshot that must not be cached, but extracting a string from it is safe. `TestMethod` availability during `DisposeAsync` (cleanup stage) is not officially guaranteed.
+**`SaveAsAsync` before context dispose** — call `SaveAsAsync` before the context is disposed. It is safe to call while the video is still in progress; it waits for completion internally.
 
-**`SaveAsAsync` before context close** — call `SaveAsAsync` before `_page.Context.DisposeAsync()`. It is safe to call while the video is still in progress; it waits for completion internally.
+**`TestContext.Current.TestMethod?.MethodName`** — xUnit v3 API to get the method name. In the `IAsyncLifetime` pattern, capture the string value in `InitializeAsync` and store in a field for `DisposeAsync`, because `TestContext` availability during cleanup is not officially guaranteed. The `TestContext` itself is a moment-in-time snapshot that must not be cached, but extracting a string from it is safe.
 
 ## .gitignore
 
