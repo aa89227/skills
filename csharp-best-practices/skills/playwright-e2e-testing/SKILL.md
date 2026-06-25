@@ -102,29 +102,19 @@ public sealed class AspireFixture : IAsyncLifetime
         Assertions.SetDefaultExpectTimeout(15_000);
     }
 
-    public static bool IsVideoEnabled =>
-        Environment.GetEnvironmentVariable("PLAYWRIGHT_RECORD_VIDEO") is "true" or "1";
-
     public async Task<IPage> NewPageAsync()
     {
         if (_browser is null) throw new InvalidOperationException("Browser not initialized");
 
-        var options = new BrowserNewContextOptions
+        var context = await _browser.NewContextAsync(new BrowserNewContextOptions
         {
             BaseURL = ContainerWebBaseUrl,
             ViewportSize = new ViewportSize { Width = 1280, Height = 720 },
             ReducedMotion = ReducedMotion.Reduce,
             ColorScheme = ColorScheme.Light,
             DeviceScaleFactor = 1
-        };
+        });
 
-        if (IsVideoEnabled)
-        {
-            options.RecordVideoDir = "/tmp/videos";
-            options.RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 };
-        }
-
-        var context = await _browser.NewContextAsync(options);
         return await context.NewPageAsync();
     }
 
@@ -186,27 +176,17 @@ public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLife
 {
     private readonly AspireFixture _fixture;
     private IPage _page = null!;
-    private string _testMethodName = string.Empty;
 
     public MyFeatureE2ETests(AspireFixture fixture) => _fixture = fixture;
 
     public async Task InitializeAsync()
     {
-        _testMethodName = TestContext.Current.TestMethod?.MethodName ?? "unknown";
         await ResetDatabaseAsync();
         _page = await _fixture.NewPageAsync();
     }
 
     public async Task DisposeAsync()
     {
-        if (AspireFixture.IsVideoEnabled && _page.Video is not null)
-        {
-            var videoDir = Path.Combine(
-                AppContext.BaseDirectory, "..", "..", "..", "videos", _testMethodName);
-            Directory.CreateDirectory(videoDir);
-            await _page.Video.SaveAsAsync(Path.Combine(videoDir, "test.webm"));
-        }
-
         await _page.Context.DisposeAsync();
     }
 
@@ -258,144 +238,6 @@ public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLife
 - `IClassFixture<AspireFixture>` — fixture lives for the lifetime of the test class. xUnit creates it once, shares across all `[Fact]` methods in the class.
 - `IAsyncLifetime` on the **test class** — provides per-test `InitializeAsync`/`DisposeAsync` for isolation (drop DB, new page).
 - `ICollectionFixture` would share across **multiple** test classes. Use only when multiple test classes must share the same Aspire instance (trades isolation for speed).
-
-## Visual Regression
-
-### Screenshot Stability Settings
-
-Before capturing, stabilize rendering:
-
-```csharp
-// Wait for web fonts
-await _page.EvaluateAsync("async () => { await document.fonts.ready; }");
-
-// Mask dynamic content that changes every run
-var masks = new ILocator[]
-{
-    _page.Locator("time"),
-    _page.Locator("[data-testid='dynamic-id']")
-};
-
-// Capture
-var screenshot = await _page.ScreenshotAsync(new PageScreenshotOptions
-{
-    FullPage = true,
-    Animations = ScreenshotAnimations.Disabled,
-    Caret = ScreenshotCaret.Hide,
-    Mask = masks
-});
-```
-
-Key points:
-- `document.fonts.ready` — prevents font-loading flicker.
-- `Mask` — hides timestamps, generated IDs, and other non-deterministic content.
-- `Animations = Disabled` + `Caret = Hide` — eliminates animation frames and blinking cursors.
-- Element screenshot (`Locator.ScreenshotAsync`) is preferred for modals/dialogs to avoid scroll and positioning variance.
-
-### Baseline Management
-
-- Store baselines in source control (e.g., `Snapshots/{TestName}/{name}.png`).
-- First run without a baseline auto-creates it.
-- On mismatch, save `{name}.actual.png` next to the baseline for visual diff.
-
-### Why SkiaSharp, Not Playwright Built-in
-
-Playwright .NET **does not have `ToHaveScreenshotAsync`**. This API only exists in the JavaScript/TypeScript version. The tracking issue ([microsoft/playwright-dotnet#1854](https://github.com/microsoft/playwright-dotnet/issues/1854)) is still open with `P3-collecting-feedback` — the maintainers have stated the internal implementation is not ready to be made public.
-
-Use SkiaSharp for pixel-level comparison:
-
-```csharp
-internal static class ScreenshotComparer
-{
-    private const int ChannelThreshold = 30;
-
-    public static double DiffRatio(byte[] expectedPng, byte[] actualPng)
-    {
-        using var expected = SKBitmap.Decode(expectedPng);
-        using var actual = SKBitmap.Decode(actualPng);
-
-        if (expected is null || actual is null) return 1.0;
-        if (expected.Width != actual.Width || expected.Height != actual.Height) return 1.0;
-
-        var expectedBytes = expected.Bytes;
-        var actualBytes = actual.Bytes;
-        if (expectedBytes.Length != actualBytes.Length) return 1.0;
-
-        long differingPixels = 0;
-        var totalPixels = (long)expected.Width * expected.Height;
-
-        for (var i = 0; i + 3 < expectedBytes.Length; i += 4)
-        {
-            if (Math.Abs(expectedBytes[i] - actualBytes[i]) > ChannelThreshold
-                || Math.Abs(expectedBytes[i + 1] - actualBytes[i + 1]) > ChannelThreshold
-                || Math.Abs(expectedBytes[i + 2] - actualBytes[i + 2]) > ChannelThreshold)
-            {
-                differingPixels++;
-            }
-        }
-
-        return totalPixels == 0 ? 0 : (double)differingPixels / totalPixels;
-    }
-}
-```
-
-Requires NuGet packages: `SkiaSharp` + `SkiaSharp.NativeAssets.Linux` (for CI).
-
-SkiaSharp approach vs Playwright JS `toHaveScreenshot` (for reference if .NET adds parity later):
-
-| | SkiaSharp (current .NET approach) | Playwright `toHaveScreenshot` (JS only) |
-|---|---|---|
-| **Algorithm** | Per-channel RGBA threshold | YIQ perceptual color distance |
-| **Tolerance** | `ChannelThreshold` (e.g., 30 per channel) | `threshold` (0-1 perceptual) + `maxDiffPixelRatio` |
-| **Diff output** | Manual: save `actual.png` on mismatch | Auto: expected + actual + diff images |
-| **Auto-retry** | None (single capture) | Retries until timeout (absorbs render lag) |
-| **Baseline update** | Manual: delete baseline to regenerate | `--update-snapshots` CLI flag |
-| **Extra deps** | SkiaSharp + NativeAssets (~3 MB) | None |
-
-## Video Recording
-
-Record test execution videos for review. Controlled by environment variable — off by default for performance.
-
-### Enable
-
-```bash
-PLAYWRIGHT_RECORD_VIDEO=true dotnet test
-```
-
-### How It Works
-
-1. `AspireFixture.NewPageAsync()` checks `PLAYWRIGHT_RECORD_VIDEO` env var.
-2. When enabled, sets `RecordVideoDir` on `BrowserNewContextOptions` to start recording.
-3. In test `DisposeAsync`, `SaveAsAsync` downloads the video from the Docker container to `videos/{testMethodName}/`.
-4. Videos are saved regardless of test pass or fail.
-
-### Output Structure
-
-```
-videos/
-├── ShouldDisplayEmptyStateWhenNoData/
-│   └── test.webm
-├── ShouldCreateItemSuccessfully/
-│   └── test.webm
-```
-
-### Key Implementation Details
-
-**`RecordVideoDir` is a server-side path** — since the browser runs in Docker, this path (`/tmp/videos`) is inside the container. The actual video retrieval happens via `SaveAsAsync`, which downloads from the container to the host.
-
-**`PathAsync()` throws on remote connections** — never use `page.Video.PathAsync()` with Docker run-server. Always use `SaveAsAsync(localPath)`.
-
-**Capture test method name in `InitializeAsync`** — use `TestContext.Current.TestMethod?.MethodName` (xUnit v3) to get the method name. Store the **string value** in a field for use in `DisposeAsync`. The `TestContext` itself is a moment-in-time snapshot that must not be cached, but extracting a string from it is safe. `TestMethod` availability during `DisposeAsync` (cleanup stage) is not officially guaranteed.
-
-**`SaveAsAsync` before context close** — call `SaveAsAsync` before `_page.Context.DisposeAsync()`. It is safe to call while the video is still in progress; it waits for completion internally.
-
-### .gitignore
-
-Add to the E2E test project's `.gitignore`:
-
-```
-videos/
-```
 
 ## WireMock Integration (External API Stubs)
 
@@ -504,15 +346,10 @@ Use `Assertions.Expect()` (Playwright static method), not xUnit `Assert` — Pla
 | **Click** | `await locator.ClickAsync()` |
 | **Fill** | `await locator.FillAsync("value")` |
 | **Assert visible** | `await Expect(locator).ToBeVisibleAsync()` |
-| **Screenshot** | `await _page.ScreenshotAsync(new PageScreenshotOptions { ... })` |
-| **Element screenshot** | `await locator.ScreenshotAsync(new LocatorScreenshotOptions { ... })` |
 | **Block request** | `await context.RouteAsync("**/path", route => route.AbortAsync())` |
 | **Inject script** | `await context.AddInitScriptAsync("...")` |
 | **Mock external API** | `_fixture.WireMock.Given(...).RespondWith(...)` |
 | **Per-test reset** | Drop DB + `WireMock.Reset()` + new page |
-| **Enable video** | `PLAYWRIGHT_RECORD_VIDEO=true dotnet test` |
-| **Save video** | `await _page.Video!.SaveAsAsync(path)` (before context close) |
-| **Test method name** | `TestContext.Current.TestMethod?.MethodName` (xUnit v3, capture in `InitializeAsync`) |
 
 ## Rules
 
@@ -524,8 +361,10 @@ Use `Assertions.Expect()` (Playwright static method), not xUnit `Assert` — Pla
 6. **Per-test isolation** — drop database + reset mocks + new browser page in every `InitializeAsync`.
 7. **Dispose context, not page** — `DisposeAsync` should dispose `_page.Context`, which also closes the page.
 8. **Playwright assertions over xUnit assertions** — use `Expect()` for DOM checks (auto-retry); reserve xUnit `Assert` for non-DOM values.
-9. **Fixed rendering** — always set viewport, ReducedMotion, ColorScheme, DeviceScaleFactor for deterministic screenshots.
-10. **Wait before screenshot** — always await `document.fonts.ready` and mask dynamic content.
-11. **Video via env var** — recording is controlled by `PLAYWRIGHT_RECORD_VIDEO`; never enable unconditionally.
-12. **`SaveAsAsync`, never `PathAsync`** — `PathAsync` throws on remote (Docker) connections; always use `SaveAsAsync` to download videos.
-13. **Videos in `.gitignore`** — `videos/` directory must not be committed.
+
+## Additional Resources
+
+### Reference Files
+
+- **`references/visual-regression.md`** — Screenshot stability settings, SkiaSharp pixel comparison implementation, baseline management, and comparison with Playwright JS `toHaveScreenshot`. Load when adding visual regression testing.
+- **`references/video-recording.md`** — Environment variable-controlled video recording, fixture/test class code changes, `SaveAsAsync` usage with Docker run-server, output structure. Load when adding test execution recording.
