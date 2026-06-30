@@ -8,7 +8,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["workflow", "git", "checkout", "detached-head"]
   trigger_keywords: ["checkout hash", "detached HEAD", "checkout by hash"]
 ---
@@ -20,20 +20,31 @@ Checkout a branch's latest commit as a **detached HEAD** instead of switching to
 ## Usage
 
 ```
-/checkout-hash <branch-name>
+sh <this-skill-directory>/scripts/checkout-hash.sh <branch-name>
 ```
 
 ## Workflow
 
-1. **Resolve** — Run `git rev-parse <branch-name>` to get the full commit hash.
-   - If the branch name does not exist locally, try `origin/<branch-name>`.
-   - If neither resolves, report the error and stop.
-2. **Report** — Show the resolved hash and branch name to the user.
-3. **Checkout** — Run `git checkout <full-hash>`.
-4. **Confirm** — Run `git log --oneline -1` to confirm the current HEAD.
+Run the bundled script directly:
+
+```bash
+sh workflow/skills/checkout-hash/scripts/checkout-hash.sh <branch-name>
+```
+
+If the skill is installed somewhere else, use the `scripts/checkout-hash.sh` path next to this `SKILL.md`.
+
+The script handles:
+
+1. Resolving the branch to a full commit hash.
+2. Trying the local branch first, then `origin/<branch-name>`.
+3. Refusing to proceed when the working tree has uncommitted changes.
+4. Checking out the resolved hash as detached HEAD.
+5. Confirming the current HEAD hash.
 
 ## Rules
 
-- **Never run `git checkout <branch-name>`** — always resolve to a hash first, then checkout the hash.
-- If the working tree has uncommitted changes that would conflict, warn the user and stop — do not use `--force` or stash automatically.
+- Do not manually inspect git history, diffs, or status output for the normal workflow. The script is the workflow.
+- Do not manually run `git rev-parse`, `git log`, or `git checkout` unless maintaining or debugging the bundled script.
+- **Never run `git checkout <branch-name>`**. The only checkout path is the script, which checks out a commit hash.
+- If the script reports uncommitted changes, stop and relay that message. Do not use `--force` or stash automatically.
 - If no branch name is provided in the arguments, ask the user which branch to checkout.
