@@ -24,7 +24,7 @@
     {
       "name": "workflow",
       "source": "./workflow",
-      "description": "Workflow mode skills: control Claude's behavior phases (discuss, execute, review).",
+      "description": "Workflow mode skills: control Claude's behavior phases (readonly, discuss, ask, summary).",
       "author": {
         "name": "aa89227"
       }
