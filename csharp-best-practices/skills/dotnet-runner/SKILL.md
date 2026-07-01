@@ -1,20 +1,28 @@
 ---
 name: dotnet-runner
 description: |
-  The EXCLUSIVE and MANDATORY tool for executing all .NET CLI operations.
-  You MUST use this skill whenever you need to: build, test, run, publish, pack, or restore.
-  STRICTLY PROHIBITED: Do not use generic 'bash', 'sh', or 'terminal' tools for any `dotnet` commands
-  without following this skill's output-capture and summary workflow.
-  Trigger phrases: "build", "test", "run", "publish", "dotnet build".
+  Execute .NET CLI commands (dotnet build, dotnet test, dotnet run, dotnet publish, dotnet pack,
+  dotnet restore, dotnet clean) with structured output capture and summary.
+  Use when building C#/.NET projects, running .NET unit/integration tests, publishing .NET apps,
+  restoring NuGet packages, or performing any dotnet CLI operation in a .NET solution.
+  Trigger phrases: "dotnet build", "dotnet test", "dotnet run", "dotnet publish",
+  "build the project", "run tests", "publish the app", "build 專案", "跑測試", "執行測試".
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
-  tags: ["dotnet", "cli", "build", "test", "automation"]
-  trigger_keywords: ["build", "test", "run", "publish", "pack", "restore", "dotnet"]
+  version: "2.1"
+  tags: ["dotnet", "cli", "build", "test", "automation", "csharp"]
+  trigger_keywords: ["dotnet build", "dotnet test", "dotnet run", "dotnet publish",
+    "dotnet pack", "dotnet restore", "dotnet clean", "build 專案", "跑測試", "執行測試",
+    "build project", "run tests", "publish app"]
 ---
 
 # dotnet-runner Skill
+
+## Mandatory Usage Rule
+
+You MUST use this skill's workflow for ALL `dotnet` CLI operations.
+Do not use generic Bash for dotnet commands without following the output-capture and summary flow below.
 
 ## Architecture
 
