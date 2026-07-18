@@ -1,50 +1,49 @@
 ---
 name: checkout-hash
 description: |
-  Checkout a branch's latest commit by hash (detached HEAD) instead of checking out the branch
-  directly. Resolves the branch to its HEAD commit hash, then runs git checkout on that hash.
-  Trigger phrases: "checkout hash", "detached HEAD", "checkout by hash",
-  "checkout 最新 hash", "checkout 分支 hash".
+  Check out a local branch's current commit as detached HEAD in the main working directory.
+  Use when development happens in a Git worktree but the project must run from the main directory
+  that holds local environment configuration. Execute only on an explicit checkout request.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
-  tags: ["workflow", "git", "checkout", "detached-head"]
-  trigger_keywords: ["checkout hash", "detached HEAD", "checkout by hash"]
+  version: "2.0"
 ---
 
-# Checkout by Hash
+# Checkout By Hash
 
-Checkout a branch's latest commit as a **detached HEAD** instead of switching to the branch itself.
+Load the committed state of a local worktree branch into the main working directory without
+checking out the branch itself.
+
+Git worktrees share local branch refs. Resolving the branch to a commit and checking out that commit
+avoids Git's restriction against checking out the same branch in two worktrees.
 
 ## Usage
 
+```text
+sh <skill-directory>/scripts/checkout-hash.sh <local-branch>
 ```
-sh <this-skill-directory>/scripts/checkout-hash.sh <branch-name>
-```
+
+Run the bundled script from the working directory that should become detached.
 
 ## Workflow
 
-Run the bundled script directly:
+1. Require an explicit user request to perform the checkout. Discussion, analysis, or a mention of
+   the branch is not authorization.
+2. Ask for the local branch name when it is missing.
+3. Run the bundled script with exactly one branch argument.
+4. Report the source branch and resulting detached commit.
+5. Stop and relay the error if the script refuses the operation.
 
-```bash
-sh workflow/skills/checkout-hash/scripts/checkout-hash.sh <branch-name>
-```
+## Guarantees And Limits
 
-If the skill is installed somewhere else, use the `scripts/checkout-hash.sh` path next to this `SKILL.md`.
+- Resolve only `refs/heads/<branch>`; do not fetch or fall back to a remote-tracking branch.
+- Include only content committed to the branch. Uncommitted worktree changes are not available.
+- Preserve ignored local files such as `.env`.
+- Refuse checkout when the target working directory contains staged, tracked, or non-ignored
+  untracked changes.
+- Never stash, clean, reset, or force away user work.
+- Treat the detached main directory as a runtime or verification environment, not a development
+  branch. Do not create commits there as part of this workflow.
 
-The script handles:
-
-1. Resolving the branch to a full commit hash.
-2. Trying the local branch first, then `origin/<branch-name>`.
-3. Refusing to proceed when the working tree has uncommitted changes.
-4. Checking out the resolved hash as detached HEAD.
-5. Confirming the current HEAD hash.
-
-## Rules
-
-- Do not manually inspect git history, diffs, or status output for the normal workflow. The script is the workflow.
-- Do not manually run `git rev-parse`, `git log`, or `git checkout` unless maintaining or debugging the bundled script.
-- **Never run `git checkout <branch-name>`**. The only checkout path is the script, which checks out a commit hash.
-- If the script reports uncommitted changes, stop and relay that message. Do not use `--force` or stash automatically.
-- If no branch name is provided in the arguments, ask the user which branch to checkout.
+Do not reproduce the checkout with ad hoc Git commands if the script fails.

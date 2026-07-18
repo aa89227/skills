@@ -13,21 +13,14 @@ die() {
 resolve_commit() {
   branch=$1
 
-  for ref in "refs/heads/$branch" "refs/remotes/$branch" "refs/remotes/origin/$branch"; do
-    if commit=$(git rev-parse --verify --quiet "${ref}^{commit}"); then
-      printf '%s %s\n' "$commit" "$ref"
-      return 0
-    fi
-  done
+  git check-ref-format --branch "$branch" >/dev/null 2>&1 ||
+    return 1
 
-  if expr "$branch" : 'refs/' >/dev/null; then
-    if commit=$(git rev-parse --verify --quiet "${branch}^{commit}"); then
-      printf '%s %s\n' "$commit" "$branch"
-      return 0
-    fi
-  fi
+  ref="refs/heads/$branch"
+  commit=$(git rev-parse --verify --quiet "${ref}^{commit}") ||
+    return 1
 
-  return 1
+  printf '%s %s\n' "$commit" "$ref"
 }
 
 has_uncommitted_changes() {
@@ -50,7 +43,7 @@ if resolved=$(resolve_commit "$branch"); then
   commit=${resolved%% *}
   ref=${resolved#* }
 else
-  die "could not resolve '$branch' as a local branch or origin branch." 1
+  die "could not resolve '$branch' as a local branch." 1
 fi
 
 printf 'Resolved %s to %s via %s\n' "$branch" "$commit" "$ref"
@@ -70,3 +63,4 @@ if test "$current" != "$commit"; then
 fi
 
 printf 'Detached HEAD is now at %s\n' "$current"
+printf 'Source branch: %s (committed content only)\n' "$branch"

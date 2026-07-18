@@ -1,78 +1,75 @@
 ---
 name: clone-project
 description: |
-  Clone an external git repository locally for read-only investigation. Use ONLY when the user
-  provides a git URL or explicitly references an external/other repository they want to examine,
-  or when an agent needs to clone an external repo to understand its implementation.
-  Do NOT trigger for requests about the current working directory's repo.
-  Trigger phrases: "clone this repo <url>", "clone down <url>", "look at <url>",
-  "clone external project", "clone another repo", "pull down this repo for reference".
+  Clone or refresh an external Git repository in a persistent local cache for read-only source
+  investigation. Reuse cached content across sessions and, when refresh fails, continue from the
+  last successful fetch with an explicit stale-data warning. Do not use for the current repository.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
-  tags: ["workflow", "git", "clone", "repository", "investigation"]
-  trigger_keywords: ["clone repo", "clone project", "clone external",
-    "clone another repo", "pull down repo", "clone for reference"]
+  version: "2.0"
 ---
 
 # Clone Project
 
-Clone or update a git repository for read-only investigation.
+Obtain a reusable local copy of an external repository when full source inspection is needed.
 
-## When to Use
+## Requirements
 
-- You need to **read, grep, or explore** another project's codebase — not just its metadata.
-- `gh api` / `gh pr view` only gives partial info; you need the full source tree.
-- An agent or workflow needs a local copy of a repo as reference material.
+- A POSIX-compatible `sh` environment such as Git Bash.
+- Git and the standard utilities bundled with Git Bash.
+- Network access for the initial clone and best-effort refresh.
 
 ## Usage
 
-```bash
-# Clone or update a repo
-sh <this-skill-directory>/scripts/clone-project.sh <repo-url> [branch]
-
-# Purge repos unused for N days
-sh <this-skill-directory>/scripts/clone-project.sh --purge <days>
+```text
+sh <skill-directory>/scripts/clone-project.sh <repo-url> [branch-or-tag]
+sh <skill-directory>/scripts/clone-project.sh --purge <days>
 ```
 
-### Arguments
+Use the `PATH` printed by the script for subsequent read-only investigation.
 
-| Arg | Required | Description |
-|-----|----------|-------------|
-| `repo-url` | Yes | Any valid git URL (`https://...`, `git@...`) |
-| `branch` | No | Branch or tag to checkout. Omit for default branch |
+## Cache Behavior
 
-### Examples
+- Cache repositories across sessions under a persistent user cache directory.
+- Reuse the same cache entry for an exact repository URL.
+- Attempt to fetch before every reuse.
+- Use the refreshed content when fetch succeeds.
+- Continue with the last successfully fetched content when fetch fails and the requested ref is
+  already available in cache.
+- Fail when no cache exists or the requested ref is unavailable.
+- Reset and clean the managed cached worktree before returning it. Content written inside this
+  disposable cache is not preserved.
+- Serialize updates to the same repository with a per-repository lock.
 
-```bash
-# Clone with default branch
-sh workflow/skills/clone-project/scripts/clone-project.sh https://github.com/ehanlin/item-bank
+Set `CLONE_WORKSPACE` to override the default cache root.
 
-# Clone specific branch
-sh workflow/skills/clone-project/scripts/clone-project.sh https://github.com/ehanlin/item-bank feature/new-api
+## Freshness Reporting
 
-# Purge repos not used in 30 days
-sh workflow/skills/clone-project/scripts/clone-project.sh --purge 30
-```
+Read these structured output fields:
 
-## Behavior
+- `PATH`: Cached repository path.
+- `REF`: Resolved remote branch or tag.
+- `COMMIT`: Checked-out commit.
+- `CACHE_RESULT`: `HIT` or `MISS`.
+- `CACHE_STATUS`: `FRESH` or `STALE`.
+- `LAST_SUCCESSFUL_FETCH`: UTC timestamp of the last successful clone or fetch.
 
-| Scenario | Action |
-|----------|--------|
-| Repo not yet cloned | `git clone` to a new directory |
-| Repo exists in index | `git fetch --all` then `reset --hard` to latest |
-| Different branch requested | Force checkout + reset to origin |
-| Branch not found | Reports error |
-| `--purge <days>` | Removes repos with `last_used` older than N days |
+When `CACHE_STATUS` is `STALE`, tell the user that:
 
-## Output
+- the refresh failed;
+- investigation used cached content;
+- the cache's last successful fetch time; and
+- remote changes after that time may be absent.
 
-Script 最後會印出 `PATH`，**直接用這個路徑**去讀取、grep、探索 cloned project。
+Do not silently substitute another branch or tag.
 
-## Rules
+## Safety
 
-1. **Always use this script** to obtain a local copy — do not run raw `git clone`.
-2. **Workspace is read-only** — never modify, commit, or push in the cloned workspace.
-3. After cloning, use **Read, Grep, Bash (read-only)** on the script output `PATH` to investigate.
-4. If the script fails (auth, network, missing repo), report the error — do not retry with different credentials.
+1. Use this script only for an explicitly external repository or when full external source is
+   necessary for the user's request.
+2. Treat the returned workspace as read-only. Do not modify, commit, or push from it.
+3. Never place user work inside the managed cache.
+4. Run purge only on an explicit purge request.
+5. If authentication fails, use eligible stale cache or report the failure. Do not try alternate
+   credentials.

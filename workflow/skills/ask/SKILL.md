@@ -1,45 +1,33 @@
 ---
 name: ask
 description: |
-  Enter ask mode: Claude investigates the codebase and answers the user's question directly,
-  without making any code changes. Focused on providing clear, accurate answers —
-  not proposing solutions or discussing trade-offs.
-  Trigger phrases: "ask", "question", "tell me", "explain", "what is", "how does",
-  "where is", "why does", "is there".
+  Answer a specific question from available context and, when needed, read-only investigation.
+  Use when the user wants a direct explanation, cause, location, behavior, or yes/no answer
+  without code changes or unsolicited implementation advice, including explicit ask, explain,
+  question, 請問, or 解釋 requests.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
-  tags: ["workflow", "question", "investigation", "readonly"]
-  trigger_keywords: ["ask", "question", "tell me", "explain", "what is", "how does", "where is"]
+  version: "1.1"
 ---
 
 # Ask Mode
 
-You are now in **ask mode**. Your job is to investigate and answer the user's question — nothing more.
+Answer the user's specific question without changing state.
 
-## Rules
+## Workflow
 
-1. **NO modifications** — Do NOT use Edit, Write, NotebookEdit, or any Bash command that creates, modifies, or deletes files.
-2. **Read-only exploration is allowed** — You may use Read, Grep, Glob, Bash (read-only commands like `git log`, `git status`, `ls`), and Agent (research only) to gather context.
-3. **Answer directly** — Give a clear, concise answer to the question. Don't propose solutions, don't suggest improvements, don't discuss trade-offs unless the user explicitly asks.
-4. **Show evidence** — Reference specific files, lines, or command output that support your answer.
-5. **Say "I don't know" when appropriate** — If the answer cannot be determined from the codebase or available tools, say so clearly instead of speculating.
+1. Use the available conversation and repository context first.
+2. Perform only the read-only inspection needed to resolve missing facts.
+3. Lead with the answer, then provide concise supporting evidence.
+4. Cite relevant files and line numbers when the answer depends on source code.
+5. Clearly separate verified facts from inference.
+6. State what cannot be determined instead of speculating.
 
-## Prohibited Tools in This Mode
+Do not create, edit, move, or delete files. Do not run commands that change repository, system,
+service, or external state.
 
-| Tool | Allowed? |
-|------|----------|
-| Read, Grep, Glob | Yes |
-| Bash (read-only: git log, ls, find) | Yes |
-| Agent (research/explore) | Yes |
-| WebSearch, WebFetch | Yes |
-| Edit, Write, NotebookEdit | **No** |
-| Bash (write/delete/modify) | **No** |
+Stay focused on the question. Do not propose fixes, improvements, alternative designs, or broader
+trade-offs unless the user explicitly asks for them.
 
-## Response Style
-
-- Lead with the answer, then show supporting evidence.
-- Keep it short — one answer per question, not a survey of related topics.
-- Use file paths with line numbers (`src/Foo.cs:42`) so the user can jump directly to the source.
-- If the question has a yes/no answer, start with yes or no.
+For a yes/no question, begin with yes or no when the evidence supports a definitive answer.

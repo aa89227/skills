@@ -1,84 +1,65 @@
 ---
 name: summary
 description: |
-  Summarize what was done in a way suitable for technical leads — mention technical direction
-  (e.g. "added caching", "refactored query logic") but never expose implementation details
-  like file paths, function names, class names, code snippets, or package names.
-  Trigger phrases: "summary", "summarize", "what did you do", "explain what changed",
-  "describe the changes".
+  Summarize completed agent work around the original need, outcomes, current state, validation,
+  and remaining limitations while suppressing irrelevant implementation detail. Use for the most
+  recent work request by default, the whole session when requested, or a user-defined scope,
+  including summary, summarize, 總結, and 摘要 requests.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
-  tags: ["workflow", "summary", "reporting", "readonly"]
-  trigger_keywords: ["summary", "summarize", "what did you do", "describe changes"]
+  version: "1.1"
 ---
 
 # Summary Mode
 
-You are now in **summary mode**. Your job is to produce a concise, non-technical summary of the work that was done.
+Produce a self-contained retrospective summary in the user's language without changing state.
 
-## Target Audience
+## Determine Scope
 
-**Technical leads** — people who understand technical direction but do not need (or want) implementation details.
+Choose the scope from the user's wording:
 
-## Rules
+- **Last work request**: Use for a bare summary request and phrases such as "just did", "last
+  instruction", or "this change". Find the most recent user instruction that initiated actual work;
+  do not treat the summary request itself as work.
+- **Whole session**: Use for phrases such as "session", "everything so far", "to this point", or
+  "整個對話".
+- **Custom scope**: Use the branch, commit range, PR, task, topic, or conversation boundary named by
+  the user.
 
-1. **NO modifications** — Do NOT use Edit, Write, NotebookEdit, or any Bash command that creates, modifies, or deletes files.
-2. **Read-only exploration is allowed** — You may use Read, Bash (read-only: `git log`, `git diff`, `git status`), and Agent (research only) to gather context.
-3. **Strip engineering details** — The following MUST NOT appear in your output:
-   - File paths or directory names
-   - Function, method, or class names
-   - Code snippets or inline code
-   - Line numbers
-   - Package or library names
-   - Commit hashes
-4. **Technical direction is OK** — You may describe the approach at a high level: "introduced a caching layer", "reorganized the data validation flow", "added automated testing for the export feature".
-5. **Follow the user's language** — Match the language the user has been using in the conversation.
+Ask for clarification only when the boundary cannot be identified reliably.
 
-## Source Selection
+Use conversation history and recorded tool results as the primary source for session and last-work
+summaries. Use read-only Git inspection to verify current state or when the user explicitly requests
+a Git-based scope. A diff alone does not prove that every included change was produced in this
+session.
 
-Decide where to gather information based on the user's context argument:
+If context compaction or missing history prevents a complete summary, state that the summary covers
+only the context still available.
 
-| Context clue | Source | Action |
-|---|---|---|
-| Mentions branch, commit, PR, diff, or merge | **Git** | Run `git log` / `git diff` to analyze changes |
-| Mentions "just did", "this session", conversation-related phrasing | **Conversation** | Summarize from the current conversation history |
-| **No context provided** | **Conversation** | Default to summarizing what the agent did in this conversation |
+## Select Relevant Detail
 
-When using git as the source, determine the appropriate range from context (e.g. current branch vs main, a specific PR, recent N commits).
+Organize the summary around:
 
-## Output Format
+1. The need or intended outcome.
+2. What was completed at a behavior or decision level.
+3. The resulting current state.
+4. Material validation that was actually performed.
+5. Remaining work, limitations, blockers, or risks.
 
-Choose the format that best fits the content:
+Include a technical detail only when it:
 
-- **Few changes** → a short paragraph (2-4 sentences)
-- **Multiple distinct changes** → bullet points grouped by theme
-- **Mixed** → a one-sentence overview followed by bullets
+- is part of the original requirement;
+- changes externally meaningful behavior;
+- explains a material decision, risk, failure, or limitation; or
+- is necessary for someone to continue the work.
 
-Always start with a one-line headline that captures the overall intent.
+Usually omit file-by-file narration, internal identifiers, raw command output, incidental refactors,
+discarded attempts, and tool-call chronology. Do not claim validation that was not performed.
 
-## Prohibited Tools in This Mode
+## Output
 
-| Tool | Allowed? |
-|------|----------|
-| Read, Grep, Glob | Yes |
-| Bash (read-only: git log, git diff, git status) | Yes |
-| Agent (research/explore) | Yes |
-| Edit, Write, NotebookEdit | **No** |
-| Bash (write/delete/modify) | **No** |
-
-## Examples
-
-### Good
-
-> **新增報表批量匯出功能**
->
-> - 支援使用者一次選取多份報表進行匯出，匯出為 ZIP 壓縮檔
-> - 加入背景處理機制，避免大量匯出時阻塞畫面
-> - 補上匯出失敗時的錯誤提示與重試流程
-
-### Bad (too much engineering detail)
-
-> 在 `ReportController.cs` 新增了 `ExportBatchAsync` method，使用 `ZipArchive` 搭配
-> `BackgroundService` 處理，加了 `try-catch` 和 `Polly` retry policy...
+- Start with a one-line statement of the overall intent or result.
+- Use a short paragraph for a small change.
+- Use flat bullets grouped by outcome for multiple distinct changes.
+- Prefer conclusions and current status over implementation chronology.
