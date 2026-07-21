@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "description": "Portable workflow modes and Git utilities for controlled investigation, discussion, and reporting.",
-  "version": "2.0.0",
+  "description": "Portable workflow modes and Git utilities for controlled investigation, discussion, reporting, and verified self-reviewed documentation (user-manual).",
+  "version": "2.1.0",
   "author": {
     "name": "aa89227"
   }
