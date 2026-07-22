@@ -38,7 +38,7 @@ Define 5–8 CSS custom properties in `:root` and use nothing else:
 }
 ```
 
-Color is reserved for exactly two callout purposes, matching the two labels used in the Markdown
+Color is reserved for exactly two callout categories, matching the two used in the Markdown
 convention (`<skill-directory>/references/markdown.md`) so a reader who sees both formats learns one
 taxonomy — plus small state badges (e.g. active / expired / archived pills). Do not color ordinary
 prose, tables, or section backgrounds beyond the subtle `--bg-soft` — if everything has color, none
@@ -52,9 +52,9 @@ treatment per section:
 - **`.card`** — bordered, rounded container for describing one screen/page (border + radius +
   padding, no fill color).
 - **`.known-gap`** (`--warn-bg`/`--warn-border`) — known-gaps and limitations callout. Matches the
-  Markdown convention's `**Known gap:**` label.
+  Markdown convention's known-gap category.
 - **`.correction`** (`--danger-bg`/`--danger-border`) — a claim (UI copy, comment, prior assumption)
-  that verification disproved. Matches the Markdown convention's `**Correction:**` label. Keep it
+  that verification disproved. Matches the Markdown convention's correction category. Keep it
   visually distinct from `.known-gap` so a reader can tell "this is missing" apart from "this is
   actively wrong" at a glance.
 - **`.badge`** — small rounded-pill label for enum-like states (active/expired/archived,
@@ -65,6 +65,20 @@ treatment per section:
   see the parent skill's writing rules on multi-path flows.
 - **`.cite`** — small, muted text for inline source captions (e.g. the internal enum name shown
   under a plain-language label) and citation summary lines.
+
+The class names above (`.known-gap`, `.correction`) are internal identifiers — keep them in English
+regardless of the document's language, exactly like a variable name. The `<span class="label">`
+text inside each box is reader-facing and must be written in the document's language. In a
+Traditional Chinese document:
+
+```html
+<div class="known-gap"><span class="label">已知限制</span><br>...</div>
+<div class="correction"><span class="label">更正</span><br>...</div>
+```
+
+Never leave the label itself in English ("Known gap", "Correction") inside an otherwise-translated
+document — that is the one place this convention is most tempting to get lazy about, because the
+class name and the label look like they should match.
 
 ## Table of contents
 

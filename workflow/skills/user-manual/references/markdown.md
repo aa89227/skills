@@ -14,14 +14,16 @@ much (terminal, editor, GitHub, plain viewer) to rely on either.
 ## Callouts
 
 There is no color in plain Markdown, so signal known-gaps and corrected-claims with a bold label
-inside a blockquote instead of decoration:
+inside a blockquote instead of decoration. There are exactly two categories — known-gap and
+correction — but the label text itself must be written in the document's language, not left as the
+English category name. In a Traditional Chinese document:
 
-> **Known gap:** the "已兌換" stat always shows a placeholder — no code path sets that status yet.
+> **已知限制：**「已兌換」統計卡片一律顯示佔位符號——目前沒有任何程式碼路徑會把這個狀態寫進去。
 
-> **Correction:** the create-page hint says this setting affects the claim page; verification found
-> the claim-page component never reads it.
+> **更正：**建立頁的提示文字說這個設定會影響領獎頁面；查證後發現不管這個設定填什麼，領獎頁面看起來都一樣。
 
-Use these two labels only (`Known gap:`, `Correction:`) — do not invent additional callout types.
+Do not invent additional callout categories beyond these two, and do not leave the label in English
+inside an otherwise-translated document.
 
 ## Citations
 

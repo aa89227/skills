@@ -115,6 +115,11 @@ any other multi-agent orchestration.
 
 ## Writing Rules
 
+- Write in the audience's language — usually the language the user has been using in the
+  conversation. Every reader-facing string (headings, table headers, callout labels) must be in
+  that language too. Only internal identifiers — CSS class names, cited function/file names — may
+  stay in their original form; a class named `.known-gap` is fine, but the text inside it must be
+  in the document's language, not the class name translated literally.
 - State outcomes, never the fact that they were verified. The verification trail lives in the
   citation footnote, not the sentence.
 - No raw code identifiers, HTTP status codes, exception types, or file paths in body text.
@@ -123,9 +128,16 @@ any other multi-agent orchestration.
 - When a mechanism has more than one path to the same outcome, present them as separate named
   paths. Do not average them into one narrative for tidiness — that is the simplification that
   hides real behavior.
+- Include one exception/edge-case table, phrased as situation → what the system does → what the
+  user sees. This is usually the single highest-value section for a non-engineer reader — do not
+  fold it into prose or skip it because the known-gaps section already covers some of the same
+  ground.
 - Put a known-gaps section in every document: settings with no visible effect, features that look
   present but do not work, risks already flagged in source but unfixed. This section is not
-  optional, even when it makes the feature look unfinished.
+  optional, even when it makes the feature look unfinished. Make it self-contained — restate each
+  gap with enough detail to understand on its own. A one-line pointer back to where it was
+  mentioned earlier ("see section 2") is not enough; that forces the reader to go hunt for the
+  explanation instead of reading it where the summary lives.
 - Put every technical identifier used to support a claim in a citation appendix, mapped to
   `file:line` or the exact function. Nothing in that appendix should appear unexplained in body
   text.
