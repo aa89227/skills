@@ -26,26 +26,41 @@ State back to the user, in one line, before exploring:
 2. What is explicitly excluded — adjacent systems that touch the target but are out of scope.
 3. The audience, if other than "non-engineer".
 4. The output destination. Default to a scratch/temp location and open the file when done, unless
-   the user names a path or an existing artifact to update.
+   the user names a path or an existing document to update.
 
 Ask only when the boundary is genuinely ambiguous from the request.
+
+If the active mode forbids writing files (e.g. discuss, readonly), do everything through Draft, but
+present the draft in the response instead of running Deliver, and say why no file was created.
+
+## Output Format
+
+The destination from Scope item 4 decides this — pick one before drafting, then read the matching
+reference file and follow it. Do not mix conventions from both in one document.
+
+- **Markdown** when the destination is inside the repository, the document will be read in an
+  editor or a PR diff, or the user names a `.md` path. Read
+  `<skill-directory>/references/markdown.md`.
+- **HTML** (a single self-contained file) when the document is a standalone deliverable meant to be
+  opened in a browser — the default for a scratch/temp destination — or the user asks for something
+  polished or presentable to a non-engineer audience. Read `<skill-directory>/references/html.md`.
 
 ## Workflow
 
 1. **Explore.** Inventory every file touching the target across all layers it spans (domain,
    application/service, API, frontend routes, frontend components, DTOs). Use `Agent` with
-   `Explore` for a large codebase. Stay inside the scope from step 1; do not wander into excluded
+   `Explore` for a large codebase. Stay inside the scope defined above; do not wander into excluded
    adjacent modules.
 2. **Verify.** Read the actual source behind every claim before writing it down. Cross-check
    behavioral claims against integration/E2E tests where they exist. Do not relay UI copy, tooltips,
    or code comments as fact without confirming them against the code that is supposed to act on
-   them. See "Verification priorities" below for what to hunt for.
-3. **Draft.** Write for the stated audience. See "Writing rules" below. Build the citation list
-   during step 2, not after — every claim should already have a `file:line` source before it is
-   written into the draft.
-4. **Self-review.** Run the loop below against the full draft. This step is mandatory and automatic
-   — do not stop after step 3 and wait for the user to ask for a check.
-5. **Deliver.** Save to the destination from step 1 and open it. Reply with what the document
+   them. See "Verification Priorities" below for what to hunt for.
+3. **Draft.** Write for the stated audience in the format decided under "Output Format" above. See
+   "Writing Rules" below. Build the citation list during step 2, not after — every claim should
+   already have a `file:line` source before it is written into the draft.
+4. **Self-review.** Run the Self-Review Loop below against the full draft. This step is mandatory
+   and automatic — do not stop after step 3 and wait for the user to ask for a check.
+5. **Deliver.** Save to the destination decided in Scope and open it. Reply with what the document
    covers and what the self-review loop caught and fixed — not a re-paste of the document.
 
 ## Verification Priorities
@@ -71,6 +86,11 @@ Re-read the entire current draft on every pass, not only the paragraphs just edi
 one pass routinely live in sections written before the writer knew what to look for. Repeat all
 three passes until one full round makes no changes, or after 3 rounds. If the cap is hit with
 unresolved issues, say so explicitly instead of shipping a flawed draft silently.
+
+When a pass surfaces something a reword cannot fix — a citation that does not actually hold up, a
+UI-copy claim that was never checked against the code it describes — go back to Verify and confirm
+it against source before touching the prose. Do not paper over a substantive gap with a
+plausible-sounding rewrite.
 
 1. **Plain-language pass.** Flag and rewrite: raw code identifiers, HTTP status codes, exception
    type names, or file paths in body text (move them to the citation appendix); undefined
