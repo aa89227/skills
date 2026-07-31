@@ -1,0 +1,26 @@
+{
+  "name": "git-operations",
+  "version": "1.0.0",
+  "description": "Git workflow skill plugin: commit message conventions and practical git worktree usage.",
+  "author": {
+    "name": "aa89227",
+    "email": "aa89227@gmail.com",
+    "url": "https://github.com/aa89227"
+  },
+  "interface": {
+    "displayName": "Git Operations",
+    "shortDescription": "Commit message conventions and practical git worktree usage.",
+    "longDescription": "Git workflow skills that keep history clean and parallel work isolated: a commit message convention guide with ready-to-use formats, and a practical guide for creating, using, and cleaning up git worktrees.",
+    "developerName": "aa89227",
+    "category": "Development",
+    "defaultPrompt": [
+      "Write a commit message for my staged changes",
+      "Create a git worktree for this feature branch"
+    ],
+    "capabilities": [
+      "Generate consistent, convention-compliant commit messages",
+      "Create, manage, and clean up git worktrees for parallel work"
+    ]
+  },
+  "skills": "./skills/"
+}

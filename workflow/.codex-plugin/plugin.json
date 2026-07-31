@@ -1,0 +1,28 @@
+{
+  "name": "workflow",
+  "version": "2.3.0",
+  "description": "Portable workflow modes and Git utilities for controlled investigation, discussion, reporting, verified self-reviewed documentation (user-manual), and ticket-scoped worktrees.",
+  "author": {
+    "name": "aa89227",
+    "email": "aa89227@gmail.com",
+    "url": "https://github.com/aa89227"
+  },
+  "interface": {
+    "displayName": "Workflow Modes",
+    "shortDescription": "Workflow modes: readonly, discuss, ask, summary, user-manual, and ticket-scoped worktrees.",
+    "longDescription": "Workflow-control skills that constrain how the agent works: read-only investigation, discussion mode without changes, direct question answering, work summaries, verified self-reviewed user manuals, external repo cloning for inspection, detached-HEAD checkouts, and ticket-scoped git worktrees.",
+    "developerName": "aa89227",
+    "category": "Development",
+    "defaultPrompt": [
+      "Enter discussion mode and investigate this issue without changing anything",
+      "Summarize the work completed in this session",
+      "Write a user manual for this feature aimed at non-engineers"
+    ],
+    "capabilities": [
+      "Constrain the agent to read-only or discussion-only behavior",
+      "Produce verified, self-reviewed documentation and work summaries",
+      "Manage ticket-scoped git worktrees and external repo clones"
+    ]
+  },
+  "skills": "./skills/"
+}
