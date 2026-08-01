@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "version": "2.3.0",
-  "description": "Portable workflow modes and Git utilities for controlled investigation, discussion, reporting, verified self-reviewed documentation (user-manual), and ticket-scoped worktrees.",
+  "version": "2.4.0",
+  "description": "Portable workflow modes and Git utilities for controlled investigation, discussion, reporting, verified self-reviewed documentation (user-manual), and ticket-scoped worktrees with complete handoff briefings.",
   "author": {
     "name": "aa89227",
     "email": "aa89227@gmail.com",

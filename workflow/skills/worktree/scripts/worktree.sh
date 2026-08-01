@@ -3,6 +3,7 @@ set -eu
 
 usage() {
   printf 'Usage: %s add <ticket> [base] [prefix]\n' "$0" >&2
+  printf '       %s validate <ticket>\n' "$0" >&2
   printf '       %s remove <ticket>\n' "$0" >&2
 }
 
@@ -51,6 +52,90 @@ default_base_branch() {
   die "could not determine the default base branch; pass one explicitly"
 }
 
+write_task_scaffold() {
+  task_file=$1
+  ticket=$2
+  branch=$3
+  base=$4
+  project=$5
+
+  cat > "$task_file" <<EOF
+# Worktree Task
+
+<!-- worktree-task-status: incomplete -->
+<!-- worktree-task-ticket: $ticket -->
+<!-- worktree-task-branch: $branch -->
+<!-- worktree-task-base: $base -->
+<!-- worktree-task-project: $project -->
+<!-- This scaffold must be completed by the agent that created the worktree before handoff. -->
+
+## Worktree metadata
+
+- Ticket: $ticket
+- Branch: $branch
+- Base: $base
+- Project: $project
+- Briefing language: replace this with the user's interaction language
+- Requirement status: replace this with the current requirement status
+
+## User's original request
+<!-- worktree-task-section: original-request -->
+<!-- worktree-task-placeholder: preserve the complete original user request here -->
+<!-- /worktree-task-section: original-request -->
+
+## Context and goal
+<!-- worktree-task-section: context-and-goal -->
+<!-- worktree-task-placeholder: describe the problem, why it matters, and desired outcome -->
+<!-- /worktree-task-section: context-and-goal -->
+
+## Confirmed requirements
+<!-- worktree-task-section: confirmed-requirements -->
+<!-- worktree-task-placeholder: list concrete behavior confirmed by the user -->
+<!-- /worktree-task-section: confirmed-requirements -->
+
+## Scope
+<!-- worktree-task-section: scope -->
+<!-- worktree-task-placeholder: state what is included and explicitly excluded -->
+<!-- /worktree-task-section: scope -->
+
+## Expected behavior and examples
+<!-- worktree-task-section: behavior -->
+<!-- worktree-task-placeholder: add scenarios, examples, or Given/When/Then cases when useful -->
+<!-- /worktree-task-section: behavior -->
+
+## Constraints and exceptions
+<!-- worktree-task-section: constraints -->
+<!-- worktree-task-placeholder: record repository rules, technical constraints, and exceptions -->
+<!-- /worktree-task-section: constraints -->
+
+## Inferred assumptions
+<!-- worktree-task-section: assumptions -->
+<!-- worktree-task-placeholder: record inferences; do not present them as confirmed requirements -->
+<!-- /worktree-task-section: assumptions -->
+
+## Unresolved questions
+<!-- worktree-task-section: open-questions -->
+<!-- worktree-task-placeholder: record unresolved or blocking questions, or state that none exist -->
+<!-- /worktree-task-section: open-questions -->
+
+## Acceptance criteria
+<!-- worktree-task-section: acceptance -->
+<!-- worktree-task-placeholder: separate automated checks from manual verification and expected results -->
+<!-- /worktree-task-section: acceptance -->
+
+## References and initial investigation
+<!-- worktree-task-section: references -->
+<!-- worktree-task-placeholder: list verified instructions, paths, symbols, tests, and commands -->
+<!-- /worktree-task-section: references -->
+
+## Handoff notes
+<!-- worktree-task-section: handoff -->
+<!-- worktree-task-placeholder: state what to read/run first and what must not be expanded -->
+- Before committing, remove this generated file: worktree-task.md
+<!-- /worktree-task-section: handoff -->
+EOF
+}
+
 cmd_add() {
   ticket_raw=$1
   base_arg=${2:-}
@@ -83,26 +168,88 @@ cmd_add() {
   task_file="$worktree_dir/worktree-task.md"
   project=$(basename "$root")
 
-  cat > "$task_file" <<EOF
-# Worktree Task
-
-- Ticket: $ticket
-- Branch: $branch
-- Base: $base
-- Project: $project
-
-## 說明
-此 worktree 是為了處理上述 ticket 而建立，請先讀取此檔案了解任務背景後再開始開發。
-
-## 注意事項
-讀完之後，如果要進行 commit，記得刪掉這個檔案（worktree-task.md），避免被一併提交進 repo。
-EOF
+  write_task_scaffold "$task_file" "$ticket" "$branch" "$base" "$project"
 
   printf '%s\n' '---'
   printf 'WORKTREE: %s\n' "$worktree_dir"
   printf 'BRANCH: %s\n' "$branch"
   printf 'BASE: %s\n' "$base"
   printf 'TASK_FILE: %s\n' "$task_file"
+  printf 'TASK_FILE_STATUS: incomplete (populate it, then run validate)\n'
+}
+
+validate_section() {
+  task_file=$1
+  section=$2
+  start="<!-- worktree-task-section: $section -->"
+  end="<!-- /worktree-task-section: $section -->"
+
+  section_content=$(awk -v start="$start" -v end="$end" '
+    $0 == start { inside = 1; next }
+    $0 == end { found = 1; inside = 0; next }
+    inside { print }
+    END { if (!found) exit 1 }
+  ' "$task_file") || die "task briefing section is missing or malformed: $section"
+
+  [ -n "$(printf '%s' "$section_content" | tr -d '[:space:]')" ] ||
+    die "task briefing section is empty: $section"
+}
+
+cmd_validate() {
+  ticket_raw=$1
+  ticket=$(sanitize_ticket "$ticket_raw")
+  [ -n "$ticket" ] || die "ticket is required"
+
+  root=$(project_root)
+  worktree_dir="$root/.worktrees/$ticket"
+  task_file="$worktree_dir/worktree-task.md"
+  project=$(basename "$root")
+
+  [ -d "$worktree_dir" ] || die "worktree not found: $worktree_dir"
+  [ -f "$task_file" ] || die "task briefing not found: $task_file"
+  branch=$(git -C "$worktree_dir" symbolic-ref --quiet --short HEAD 2>/dev/null) ||
+    die "could not determine the worktree branch: $worktree_dir"
+
+  status=$(sed -n 's/^<!-- worktree-task-status: \([^ ]*\) -->$/\1/p' "$task_file" | head -n 1)
+  [ "$status" = complete ] ||
+    die "task briefing is incomplete: set worktree-task-status to complete after populating it"
+
+  grep -qF "<!-- worktree-task-ticket: $ticket -->" "$task_file" ||
+    die "task briefing ticket does not match: $ticket"
+  grep -qF "<!-- worktree-task-branch: $branch -->" "$task_file" ||
+    die "task briefing branch does not match: $branch"
+  grep -qF "<!-- worktree-task-base:" "$task_file" ||
+    die "task briefing base metadata is missing"
+  grep -qF "<!-- worktree-task-project: $project -->" "$task_file" ||
+    die "task briefing project does not match: $project"
+
+  if grep -qF '<!-- worktree-task-placeholder:' "$task_file"; then
+    die "task briefing still contains scaffold placeholders"
+  fi
+  if grep -qF 'This scaffold must be completed' "$task_file"; then
+    die "task briefing still contains the scaffold handoff warning"
+  fi
+  if grep -qF 'replace this with' "$task_file"; then
+    die "task briefing still contains metadata placeholders"
+  fi
+
+  for section in \
+    original-request \
+    context-and-goal \
+    confirmed-requirements \
+    scope \
+    behavior \
+    constraints \
+    assumptions \
+    open-questions \
+    acceptance \
+    references \
+    handoff
+  do
+    validate_section "$task_file" "$section"
+  done
+
+  printf 'VALID: %s\n' "$task_file"
 }
 
 cmd_remove() {
@@ -134,6 +281,10 @@ case "$action" in
   add)
     [ "$#" -ge 1 ] && [ "$#" -le 3 ] || { usage; exit 64; }
     cmd_add "$@"
+    ;;
+  validate)
+    [ "$#" -eq 1 ] || { usage; exit 64; }
+    cmd_validate "$@"
     ;;
   remove)
     [ "$#" -eq 1 ] || { usage; exit 64; }
