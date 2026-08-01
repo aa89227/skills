@@ -1,0 +1,4 @@
+interface:
+  display_name: "Microsoft Testing Platform"
+  short_description: "MTP test runners, CLI, config, and CI patterns"
+  default_prompt: "Use $microsoft-testing-platform to configure or troubleshoot Microsoft Testing Platform for this .NET test project."

@@ -1,0 +1,18 @@
+<!--
+  Native .NET 10 MTP setup.
+  See references/runner-and-migration.md#mstest.
+  Keep the SDK and extension versions aligned with the repository's package policy.
+-->
+<Project Sdk="MSTest.Sdk/4.3.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Optional extensions; remove any capability the project does not need. -->
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.3.3" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.9.0" />
+  </ItemGroup>
+</Project>

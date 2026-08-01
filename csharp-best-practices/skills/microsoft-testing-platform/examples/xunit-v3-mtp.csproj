@@ -1,0 +1,24 @@
+<!--
+  xUnit.net v3 with an explicit MTP v2 package variant.
+  See references/runner-and-migration.md#xunitnet-v3 and the xUnit-specific filter section in
+  references/cli-and-configuration.md#filter-tests-inside-a-module.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
+
+    <!-- Add these only while VSTest consumers still need compatibility. -->
+    <!--
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.2.2" />
+    -->
+  </ItemGroup>
+</Project>

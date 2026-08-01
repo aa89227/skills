@@ -1,0 +1,6 @@
+{
+  "platformOptions": {
+    "resultDirectory": "./TestResults",
+    "exitProcessOnUnhandledException": false
+  }
+}

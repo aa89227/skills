@@ -1,6 +1,6 @@
 {
   "name": "csharp-best-practices",
-  "version": "2.20.0",
+  "version": "2.22.0",
   "description": "C# 14 best practices skill plugin with dotnet CLI agent.",
   "author": {
     "name": "aa89227",
@@ -9,18 +9,19 @@
   },
   "interface": {
     "displayName": "C# Best Practices",
-    "shortDescription": "C# 14 best practices, .NET testing patterns, and dotnet CLI workflows.",
-    "longDescription": "A collection of C#/.NET skills covering modern C# 14 language features, performance tuning, dotnet CLI operations, project initialization, test conventions, API and MongoDB integration testing with Verify and Testcontainers, MongoDB driver patterns, Aspire resources, Playwright E2E testing, Microsoft Agent Framework, and file-based apps.",
+    "shortDescription": "C# 14 best practices, MTP testing, and dotnet CLI workflows.",
+    "longDescription": "A collection of C#/.NET skills covering modern C# 14 language features, performance tuning, dotnet CLI operations, project initialization, test conventions, Microsoft Testing Platform runner and CI patterns, API and MongoDB integration testing with Verify and Testcontainers, MongoDB driver patterns, Aspire resources, Playwright E2E testing, Microsoft Agent Framework, and file-based apps.",
     "developerName": "aa89227",
     "category": "Development",
     "defaultPrompt": [
       "Review this C# code against modern C# 14 best practices",
       "Write integration tests for this API using Verify snapshots",
-      "Build and run the tests for this .NET solution"
+      "Configure Microsoft Testing Platform and run the tests for this .NET solution"
     ],
     "capabilities": [
       "Write and review C# code with modern C# 14 idioms",
       "Run dotnet CLI builds, tests, and publishes with structured output",
+      "Configure Microsoft Testing Platform runners, extensions, and CI reporting",
       "Design MongoDB, API, and Playwright E2E tests with Testcontainers and Verify"
     ]
   },

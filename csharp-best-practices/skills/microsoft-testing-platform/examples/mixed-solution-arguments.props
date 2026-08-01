@@ -1,0 +1,27 @@
+<!--
+  Scope framework-specific arguments when one native-MTP solution contains different runners.
+  See references/cli-and-configuration.md#configure-with-testconfigjson and
+  references/runner-and-migration.md#configure-the-repository.
+-->
+<Project>
+  <PropertyGroup>
+    <!-- Preserve arguments supplied by the runner or another props file. -->
+    <TestingPlatformCommandLineArguments>
+      $(TestingPlatformCommandLineArguments) --minimum-expected-tests 1
+    </TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <!-- MSTest/NUnit keep the familiar filter grammar in MTP. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Orders.MSTest.Tests'">
+    <TestingPlatformCommandLineArguments>
+      $(TestingPlatformCommandLineArguments) --filter TestCategory=Smoke
+    </TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <!-- xUnit.net v3 uses its MTP-specific filter options. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Orders.Xunit.Tests'">
+    <TestingPlatformCommandLineArguments>
+      $(TestingPlatformCommandLineArguments) --filter-trait Category=Smoke
+    </TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+</Project>
