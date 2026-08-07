@@ -1,6 +1,6 @@
 {
   "name": "csharp-best-practices",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "description": "C# 14 best practices skill plugin with dotnet CLI agent.",
   "author": {
     "name": "aa89227",
