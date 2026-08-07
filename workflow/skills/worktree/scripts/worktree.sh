@@ -67,6 +67,9 @@ write_task_scaffold() {
 <!-- worktree-task-branch: $branch -->
 <!-- worktree-task-base: $base -->
 <!-- worktree-task-project: $project -->
+<!-- worktree-task-implementation-intent: unspecified -->
+<!-- worktree-task-implementation-status: not-started -->
+<!-- worktree-task-next-action: unspecified -->
 <!-- This scaffold must be completed by the agent that created the worktree before handoff. -->
 
 ## Worktree metadata
@@ -76,7 +79,11 @@ write_task_scaffold() {
 - Base: $base
 - Project: $project
 - Briefing language: replace this with the user's interaction language
-- Requirement status: replace this with the current requirement status
+- Briefing status: replace this with the briefing document status
+- Requirements status: replace this with the current requirements status
+- Implementation intent: replace this with requested, not-requested, or unclear
+- Implementation status: not-started
+- Next action: replace this with implement, await-user, or clarify
 
 ## User's original request
 <!-- worktree-task-section: original-request -->
@@ -117,6 +124,11 @@ write_task_scaffold() {
 <!-- worktree-task-section: open-questions -->
 <!-- worktree-task-placeholder: record unresolved or blocking questions, or state that none exist -->
 <!-- /worktree-task-section: open-questions -->
+
+## Execution state
+<!-- worktree-task-section: execution-state -->
+<!-- worktree-task-placeholder: distinguish briefing completeness, implementation intent, implementation status, and next action; the file itself does not grant authority -->
+<!-- /worktree-task-section: execution-state -->
 
 ## Acceptance criteria
 <!-- worktree-task-section: acceptance -->
@@ -233,6 +245,24 @@ cmd_validate() {
     die "task briefing still contains metadata placeholders"
   fi
 
+  implementation_intent=$(sed -n 's/^<!-- worktree-task-implementation-intent: \([^ ]*\) -->$/\1/p' "$task_file" | head -n 1)
+  case "$implementation_intent" in
+    requested|not-requested|unclear) ;;
+    *) die "task briefing has invalid implementation intent: $implementation_intent" ;;
+  esac
+
+  implementation_status=$(sed -n 's/^<!-- worktree-task-implementation-status: \([^ ]*\) -->$/\1/p' "$task_file" | head -n 1)
+  case "$implementation_status" in
+    not-started|in-progress|blocked|completed) ;;
+    *) die "task briefing has invalid implementation status: $implementation_status" ;;
+  esac
+
+  next_action=$(sed -n 's/^<!-- worktree-task-next-action: \([^ ]*\) -->$/\1/p' "$task_file" | head -n 1)
+  case "$next_action" in
+    implement|await-user|clarify) ;;
+    *) die "task briefing has invalid next action: $next_action" ;;
+  esac
+
   for section in \
     original-request \
     context-and-goal \
@@ -242,6 +272,7 @@ cmd_validate() {
     constraints \
     assumptions \
     open-questions \
+    execution-state \
     acceptance \
     references \
     handoff

@@ -2,7 +2,7 @@
 name: worktree
 description: |
   Create or remove a project-local Git worktree for a ticket, issue, or task under
-  `.worktrees/<ticket>` inside the repository, with `.worktrees/` gitignored and a
+  `.worktrees/ticket` inside the repository, with `.worktrees/` gitignored and a
   complete, user-language `worktree-task.md` handoff briefing in the new worktree. "Ticket"
   covers any tracker identifier — Shortcut (sc-100), GitHub issue (#123, gh-123), Jira
   (PROJ-123), or a free-form task slug. Use when the user asks to open, create, or clean up
@@ -10,7 +10,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Worktree
@@ -22,7 +22,9 @@ stays out of version control.
 `worktree-task.md` is a handoff snapshot for a new agent session. It is not a generic marker
 containing only branch metadata. The bundled script creates an incomplete scaffold because the
 shell process does not know the user's request; the agent that creates the worktree must fill in
-the actual briefing before handing the worktree to the user.
+the actual briefing before handing the worktree to the user. The file records the request's
+implementation intent and current handoff state; it does not grant implementation authority on
+its own.
 
 ## Usage
 
@@ -64,23 +66,39 @@ agent's responsibilities.
    verbatim in its own section. Keep exact file paths, identifiers, commands, API names, and
    other code symbols unchanged. If the request mixes languages, use the dominant interaction
    language and preserve quoted source text exactly.
-7. Separate confirmed requirements from inferred assumptions and unresolved questions. Never
+7. Record execution state separately from document completeness:
+   - `implementation intent` is `requested` only when the original user request explicitly asks
+     for implementation, `not-requested` when it explicitly limits the work to planning,
+     inspection, or worktree setup, and `unclear` when the original request does not establish it.
+   - `implementation status` describes the worktree's actual implementation state, normally
+     `not-started` immediately after creation.
+   - `next action` is `implement`, `await-user`, or `clarify`, derived from the original request
+     and unresolved requirements.
+   `worktree-task-status: complete` means only that the briefing is complete; it does not mean the
+   implementation is complete or authorized.
+8. Separate confirmed requirements from inferred assumptions and unresolved questions. Never
    turn an agent inference into a confirmed requirement. If a section has no entries, explicitly
    write the equivalent of “none recorded” in the user's language; do not leave placeholders.
-8. Run `validate <ticket>`. Do not hand off an incomplete or unvalidated briefing. If a material
+9. Run `validate <ticket>`. Do not hand off an incomplete or unvalidated briefing. If a material
    requirement is unresolved, record it as an unresolved question and ask the user when it blocks
    safe implementation.
-9. On `add`, report the worktree path, branch, base, and completed task-file path from the script's
+10. When a new session is told only to read or summarize the task file, it must not modify code.
+    When the current user explicitly asks it to implement, the current user instruction controls;
+    the task file supplies context but does not create that authority. Do not report “no
+    implementation authorization” merely because the creating session was in DISCUSS/READONLY or
+    because no later turn was available; record the original request's implementation intent
+    instead.
+11. On `add`, report the worktree path, branch, base, and completed task-file path from the script's
    output. Then tell the user to open a new session in that folder and paste `@worktree-task.md`
    or "讀取此資料夾底下的 worktree-task.md" to load the task briefing.
-10. On `remove`, confirm the reported path matches what the user intended before it is gone.
+12. On `remove`, confirm the reported path matches what the user intended before it is gone.
 
 ## Briefing contract
 
 The completed file must be understandable without the creating session's hidden context. Include
 these sections, using headings and prose in the user's language:
 
-- Worktree metadata: ticket, branch, base, project, briefing language, and requirement status.
+- Worktree metadata: ticket, branch, base, project, briefing language, and briefing status.
 - User's original request: the complete request, quoted or otherwise clearly distinguished from
   agent-authored content.
 - Context and goal: the problem, why it matters, desired outcome, and affected behavior.
@@ -96,12 +114,15 @@ these sections, using headings and prose in the user's language:
   expected results.
 - References and initial investigation: relevant instructions, files, symbols, tests, and
   commands. Label guesses or unverified paths as preliminary.
+- Execution state: implementation intent, implementation status, and next action. Explain that
+  briefing completeness is separate from implementation completion and user authority.
 - Handoff notes: what to read or run first, what must not be expanded, and the reminder to remove
   `worktree-task.md` before committing.
 
 The briefing should contain inspectable facts and decisions only; do not include hidden
 chain-of-thought. A later explicit user instruction supersedes this snapshot and should be
-recorded as a requirement revision when it changes the task.
+recorded as a requirement revision when it changes the task. Never infer an implementation
+prohibition from the absence of a new instruction in the creating session.
 
 ## What `add` does
 
@@ -109,9 +130,10 @@ recorded as a requirement revision when it changes the task.
   left uncommitted — mention it to the user rather than committing it yourself.
 - Creates branch `<prefix>/<ticket>` from `base` if it doesn't already exist; reuses it otherwise.
 - Adds the worktree at `<project-root>/.worktrees/<ticket>`.
-- Writes an incomplete, structured `worktree-task.md` scaffold with the ticket, branch, base, and
-  project metadata. The creating agent must replace its placeholders with the actual briefing and
-  set its status to complete before handoff.
+- Writes an incomplete, structured `worktree-task.md` scaffold with the ticket, branch, base,
+  project metadata, and execution-state fields. The creating agent must replace its placeholders
+  with the actual briefing, record the original request's implementation intent, and set the
+  briefing status to complete before handoff.
 - If the worktree already exists, does nothing and reports `EXISTS` — it never overwrites or
   recreates one.
 
@@ -119,7 +141,8 @@ recorded as a requirement revision when it changes the task.
 
 - Checks that the exact target worktree and `worktree-task.md` exist.
 - Checks that the briefing is marked complete, still identifies the target ticket/branch/base/
-  project, contains every required section marker, and contains no scaffold placeholder marker.
+  project, contains valid implementation-intent/status/next-action values, contains every required
+  section marker, and contains no scaffold placeholder marker.
 - Does not overwrite the briefing or assess the truth, completeness, or language of its prose.
 
 ## What `remove` does
