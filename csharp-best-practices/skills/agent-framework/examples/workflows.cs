@@ -1,6 +1,7 @@
-// Microsoft Agent Framework 1.0.0 — Workflows
+// Microsoft Agent Framework 1.17.0 — Workflows
 // Demonstrates: WorkflowBuilder, lambda executor, custom Executor class,
-//   Executor<TIn,TOut>, [MessageHandler] source generator, InProcessExecution
+//   Executor<TIn,TOut>, [MessageHandler] source generator, InProcessExecution,
+//   current orchestration/hosting boundary
 
 using Microsoft.Agents.AI.Workflows;
 
@@ -51,29 +52,17 @@ internal sealed class UppercaseExecutor() : Executor<string, string>("UppercaseE
     }
 }
 
-// --- Azure Functions hosting ---
+// --- Magentic orchestration (specialized, version-sensitive API) ---
+// Cap rounds/stalls/resets and tool permissions for production workloads.
+// var magentic = new MagenticWorkflowBuilder(managerAgent)
+//     .AddParticipants(researchAgent, writerAgent)
+//     .WithName("ResearchAndWrite")
+//     .WithDescription("Research, then produce a bounded report.")
+//     .RequirePlanSignoff()
+//     .WithMaxRounds(10)
+//     .WithMaxStalls(3)
+//     .WithMaxResets(2)
+//     .Build();
 
-using Azure.AI.OpenAI;
-using Azure.Identity;
-using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Hosting.AzureFunctions;
-using Microsoft.Azure.Functions.Worker.Builder;
-using Microsoft.Extensions.Hosting;
-
-AIAgent hostedAgent = new AzureOpenAIClient(
-        new Uri(Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")!),
-        new DefaultAzureCredential())
-    .GetChatClient("gpt-4o-mini")
-    .AsAIAgent(
-        instructions: "You are a helpful assistant hosted in Azure Functions.",
-        name: "HostedAgent");
-
-// Auto-generates HTTP endpoints: POST /api/agents/{name}/run
-using IHost app = FunctionsApplication
-    .CreateBuilder(args)
-    .ConfigureFunctionsWebApplication()
-    .ConfigureDurableAgents(options =>
-        options.AddAIAgent(hostedAgent, timeToLive: TimeSpan.FromHours(1)))
-    .Build();
-
-app.Run();
+// Durable Task/Azure Functions hosting is no longer in this core source tree. Use the maintained
+// extension repository: https://github.com/microsoft/agent-framework-durable-extension

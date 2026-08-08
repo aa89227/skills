@@ -1,4 +1,4 @@
-// Microsoft Agent Framework 1.0.0 — Middleware
+// Microsoft Agent Framework 1.17.0 — Middleware
 // Demonstrates: agent run middleware, function calling middleware,
 //   IChatClient middleware, AIContextProvider as middleware
 
@@ -37,6 +37,9 @@ var agentWithContextProvider = azureOpenAIClient.AsIChatClient()
     .AsBuilder()
     .UseAIContextProviders(new DateTimeContextProvider())
     .BuildAIAgent(instructions: "You are a helpful assistant.");
+
+// Use MessageAIContextProvider when context only needs to add/filter messages. Use the full
+// AIContextProvider hooks for stateful instructions, tools, or post-run persistence.
 
 // --- Agent Run Middleware ---
 // Receives innerAgent; calls innerAgent.RunAsync() to continue the chain.

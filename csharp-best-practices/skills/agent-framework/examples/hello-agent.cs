@@ -1,7 +1,8 @@
-// Microsoft Agent Framework 1.0.0 — Hello Agent & Providers
-// Demonstrates: minimal setup (Azure OpenAI), streaming, OpenAI (non-Azure),
+// Microsoft Agent Framework 1.17.0 — Hello Agent & Providers
+// Demonstrates: Foundry-first setup, streaming, OpenAI/Azure OpenAI,
 //   Chat Completion vs Responses client, function tools
 
+using Azure.AI.Projects;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Agents.AI;
@@ -9,15 +10,18 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 using System.ComponentModel;
 
-// --- Minimal Hello Agent (Azure OpenAI) ---
+// --- Minimal Hello Agent (Azure AI Foundry project) ---
 
-var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")!;
+var projectEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT")!;
+var model = Environment.GetEnvironmentVariable("FOUNDRY_MODEL") ?? "gpt-5.4-mini";
 
-AIAgent agent = new AzureOpenAIClient(
-        new Uri(endpoint),
+AIAgent agent = new AIProjectClient(
+        new Uri(projectEndpoint),
         new DefaultAzureCredential())   // production: use ManagedIdentityCredential
-    .GetChatClient("gpt-4o-mini")
-    .AsAIAgent(instructions: "You are good at telling jokes.", name: "Joker");
+    .AsAIAgent(
+        model: model,
+        instructions: "You are good at telling jokes.",
+        name: "Joker");
 
 // Non-streaming
 Console.WriteLine(await agent.RunAsync("Tell me a joke about a pirate."));
@@ -25,10 +29,12 @@ Console.WriteLine(await agent.RunAsync("Tell me a joke about a pirate."));
 // Streaming
 await foreach (var update in agent.RunStreamingAsync("Tell me a joke about a pirate."))
 {
-    Console.Write(update);
+    Console.Write(update.Text);
 }
 
-// --- Providers ---
+// --- Provider alternatives ---
+
+var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")!;
 
 var client = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential());
 

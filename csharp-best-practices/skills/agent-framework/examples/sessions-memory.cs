@@ -1,6 +1,6 @@
-// Microsoft Agent Framework 1.0.0 — Sessions & AIContextProvider
+// Microsoft Agent Framework 1.17.0 — Sessions & AIContextProvider
 // Demonstrates: AgentSession multi-turn, session serialization,
-//   AIContextProvider implementation (ProvideAIContextAsync + StoreAIContextAsync)
+//   background continuation, AIContextProvider implementation
 
 using Microsoft.Agents.AI;
 
@@ -21,6 +21,22 @@ System.Text.Json.JsonElement serialized = await agent.SerializeSessionAsync(sess
 AgentSession resumed = await agent.DeserializeSessionAsync(serialized);
 Console.WriteLine(await agent.RunAsync("What were we talking about?", resumed));
 
+// --- Background response continuation ---
+
+AgentResponse background = await agent.RunAsync(
+    "Start the long-running report.",
+    resumed,
+    new AgentRunOptions { AllowBackgroundResponses = true });
+
+if (background.ContinuationToken is not null)
+{
+    // Persist the token, then poll later. The token can be serialized with the framework's
+    // AgentAbstractions JSON metadata when it crosses a process boundary.
+    AgentResponse completed = await agent.RunAsync(
+        resumed,
+        new AgentRunOptions { ContinuationToken = background.ContinuationToken });
+}
+
 // --- AIContextProvider: custom memory that injects context ---
 // Register via ChatClientAgentOptions.AIContextProviders
 
@@ -29,6 +45,9 @@ AIAgent agentWithMemory = chatClient.AsAIAgent(new ChatClientAgentOptions()
     ChatOptions = new() { Instructions = "You are a friendly assistant." },
     AIContextProviders = [new SimpleMemoryProvider()]
 });
+
+// For message-only enrichment, derive from MessageAIContextProvider and override
+// ProvideMessagesAsync instead of implementing durable provider state.
 
 // --- AIContextProvider implementation ---
 

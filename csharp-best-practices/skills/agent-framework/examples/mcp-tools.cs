@@ -1,10 +1,11 @@
-// Microsoft Agent Framework 1.0.0 — MCP Tools Integration
+// Microsoft Agent Framework 1.17.0 — MCP Tools Integration
 // Demonstrates: local MCP (stdio), hosted MCP (Responses API),
-//   MCP tool approval (human-in-the-loop)
+//   MCP task support, MCP tool approval (human-in-the-loop)
 
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Mcp;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
 using OpenAI.Responses;
@@ -21,13 +22,16 @@ await using var mcpClient = await McpClient.CreateAsync(new StdioClientTransport
     Arguments = ["-y", "@modelcontextprotocol/server-github"],
 }));
 
-var mcpTools = await mcpClient.ListToolsAsync();
+// Ordinary local tools are available from ListToolsAsync(). Use the task-aware adapter when
+// the server advertises long-running task support.
+var taskTools = await mcpClient.ListAgentToolsWithTaskSupportAsync(
+    new McpTaskOptions { DefaultTimeToLive = TimeSpan.FromMinutes(10) });
 
 AIAgent agentWithMcp = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
     .GetChatClient(deploymentName)
     .AsAIAgent(
         instructions: "You answer questions about GitHub repos.",
-        tools: [.. mcpTools.Cast<AITool>()]);
+        tools: [.. taskTools]);
 
 // --- Hosted MCP (Responses API — server-side MCP execution) ---
 // Requires: GetResponsesClient() (not GetChatClient)
@@ -37,7 +41,7 @@ var mcpTool = new HostedMcpServerTool(
     serverAddress: "https://learn.microsoft.com/api/mcp")
 {
     AllowedTools = ["microsoft_docs_search"],
-    ApprovalMode = HostedMcpServerToolApprovalMode.NeverRequire   // auto-approve
+    ApprovalMode = HostedMcpServerToolApprovalMode.AlwaysRequire  // default for untrusted tools
 };
 
 AIAgent responsesAgent = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
@@ -47,16 +51,6 @@ AIAgent responsesAgent = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzu
         instructions: "Search Microsoft Learn only.",
         name: "LearnAgent",
         tools: [mcpTool]);
-
-// --- MCP with Tool Approval (human-in-the-loop) ---
-
-var mcpToolWithApproval = new HostedMcpServerTool(
-    serverName:    "microsoft_learn",
-    serverAddress: "https://learn.microsoft.com/api/mcp")
-{
-    AllowedTools = ["microsoft_docs_search"],
-    ApprovalMode = HostedMcpServerToolApprovalMode.AlwaysRequire  // require human approval
-};
 
 // Run — may return approval requests instead of a final answer
 AgentSession session = await responsesAgent.CreateSessionAsync();
