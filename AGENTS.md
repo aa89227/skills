@@ -6,6 +6,12 @@ This repository publishes the same reusable skills through two plugin formats: C
 
 The repository contains reusable skill plugins for C#/.NET development, Git operations, and agent workflow support. Each plugin exposes skills through both supported hosts when both manifests are present.
 
+## Skill Source of Truth and Edit Scope
+
+This repository is the source of truth for the skills it publishes. When a task concerns a skill provided by this repository, inspect and modify the matching files under this repository's plugin directories, especially `*/skills/*/SKILL.md`, rather than an installed copy.
+
+Treat user-level skill directories and installed skill copies (for example, under `~/.codex/skills` or `~/.claude/skills`) as read-only runtime dependencies. Do not edit, delete, overwrite, or otherwise mutate them for a repository task. Before writing a skill file, verify that its path is inside this repository; if a user-level copy was loaded or reported by a tool, locate the corresponding repository file and make the change there. Do not modify files outside this repository unless the user explicitly asks for that separate change.
+
 ## Repository Layout
 
 ~~~
