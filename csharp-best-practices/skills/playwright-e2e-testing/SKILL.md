@@ -16,6 +16,15 @@ metadata:
 
 # Playwright E2E Testing with Aspire + xUnit
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 **Stack:** Microsoft.Playwright + Aspire.Hosting.Testing + xUnit v3 + Testcontainers
 
 > **xUnit v2 note:** Replace `ValueTask` with `Task` in all `IAsyncLifetime` implementations, and `[Collection<T>]` with `[Collection("name")]`.

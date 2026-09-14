@@ -10,6 +10,15 @@ metadata:
 
 # MongoDB Strongly-Typed Patterns
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 **Driver version:** MongoDB.Driver 3.x (.NET 8+)
 
 ## General Rules

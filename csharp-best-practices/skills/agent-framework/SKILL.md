@@ -19,6 +19,15 @@ metadata:
 
 # Microsoft Agent Framework (.NET) — 1.17.0
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 > Verified against the `dotnet-1.17.0` tag of `microsoft/agent-framework` on 2026-08-07.
 > Read [the release-difference checklist](references/release-differences-1.0.0-to-1.17.0.md)
 > when a version-sensitive detail matters.

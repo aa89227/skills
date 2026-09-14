@@ -22,6 +22,15 @@ metadata:
 
 # MongoDB Integration Testing
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 **Frameworks:** NUnit 4.x, xUnit 2.x, Testcontainers.MongoDb 4.12.0, MongoDB.Driver 3.9.0, Verify.NUnit / Verify.Xunit
 
 Complements the **`mongodb-strongly-typed`** skill — this skill covers the **testing** side.

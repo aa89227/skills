@@ -12,6 +12,17 @@ This repository is the source of truth for the skills it publishes. When a task 
 
 Treat user-level skill directories and installed skill copies (for example, under `~/.codex/skills` or `~/.claude/skills`) as read-only runtime dependencies. Do not edit, delete, overwrite, or otherwise mutate them for a repository task. Before writing a skill file, verify that its path is inside this repository; if a user-level copy was loaded or reported by a tool, locate the corresponding repository file and make the change there. Do not modify files outside this repository unless the user explicitly asks for that separate change.
 
+## Skill Instruction Retention
+
+When a repository-local skill is activated for the current task, read its `SKILL.md` once, retain
+and follow its instructions, and do not reread it on every turn or before every action. If the
+runtime has already provided the skill content, use that loaded content instead of issuing
+another read.
+
+Reread the file only when it may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 ## Repository Layout
 
 ~~~

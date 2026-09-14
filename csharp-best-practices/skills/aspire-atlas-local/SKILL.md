@@ -18,6 +18,15 @@ metadata:
 
 # Aspire Custom Resource: MongoDB Atlas Local
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 > Custom Aspire resource for `mongodb/mongodb-atlas-local` — supports `$search` and `$vectorSearch` out of the box.
 > Aspire.Hosting 13.4.x compatible.
 

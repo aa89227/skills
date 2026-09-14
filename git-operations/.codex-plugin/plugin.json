@@ -1,6 +1,6 @@
 {
   "name": "git-operations",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Git workflow skill plugin: commit message conventions and practical git worktree usage.",
   "author": {
     "name": "aa89227",

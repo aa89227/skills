@@ -29,6 +29,15 @@ This skill activates when:
 
 # C# / .NET Project Init (.NET 10+)
 
+## Instruction Retention
+
+Read this file when this skill is first activated for the current task. Once read, retain and
+follow its instructions without rereading the file on every turn or before every action.
+
+Reread it only when the file may have changed, the current context no longer contains its
+instructions (for example after context compaction or a new session), the instructions are
+ambiguous or conflicting, or exact wording must be verified.
+
 **Requires:** .NET 10 SDK (`dotnet --version` ≥ `10.0.100`). The `.slnx` format and `dotnet new buildprops`/`buildtargets` are assumed available.
 
 ## Config Quick Reference
