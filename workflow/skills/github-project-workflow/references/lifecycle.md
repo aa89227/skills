@@ -187,7 +187,9 @@ Before every lifecycle status change, the agent MUST:
 7. Verify the target status entry criteria and human gate, if any.
 8. Execute the transition.
 9. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
-10. Record any missing condition instead of transitioning.
+10. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
+11. Record any missing condition instead of transitioning; emit a checkpoint before returning
+    control to Human.
 
 Reading only a PR or only a Project card is insufficient evidence for a lifecycle transition.
 

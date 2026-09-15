@@ -100,7 +100,8 @@ Before ending a session, the agent MUST ensure:
 - necessary implementation progress is pushed to the implementation branch;
 - verification results and known limitations are recorded;
 - blocker reason and unblocking condition are recorded when blocked; and
-- stack base/head relationships are correct.
+- stack base/head relationships are correct; and
+- a `Workflow Checkpoint` is emitted according to [checkpoint.md](checkpoint.md).
 
 If Delivery implementation has begun but is incomplete, keep `In Progress` and a Draft PR. If
 Research/Prototype work without a repository artifact has begun but is incomplete, keep `In

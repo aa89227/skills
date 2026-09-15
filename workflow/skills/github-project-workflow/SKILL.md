@@ -9,8 +9,8 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
-  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "workflow", "release"]
+  version: "1.1"
+  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "workflow", "checkpoint", "release"]
 ---
 
 # GitHub Project Development Workflow
@@ -39,6 +39,8 @@ local task with no tracked requirement, do not invent a Project lifecycle around
   and `Waiting` are metadata or signals, never lifecycle statuses.
 - MUST run the transition protocol in
   [references/lifecycle.md](references/lifecycle.md) before changing Project Status.
+- MUST emit a `Workflow Checkpoint` after every lifecycle status change and at session end; MUST
+  follow [references/checkpoint.md](references/checkpoint.md) for the format and hard-pause rules.
 - MUST stop the transition and report the missing condition when an entry criterion, exit
   criterion, allowed transition, or required human approval is absent.
 - MUST preserve unknown local changes. MUST NOT reset, clean, restore, overwrite, or destructively
@@ -123,6 +125,7 @@ experiment; if work has not started, keep the truthful earlier status.
 Read only the references needed for the current operation:
 
 - Lifecycle transition, status criteria, approval, or cancellation: [lifecycle.md](references/lifecycle.md)
+- Checkpoint output, pause/resume behavior, or next-action reporting: [checkpoint.md](references/checkpoint.md)
 - Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
 - Create or revise an Issue, type, acceptance criteria, open questions, or release note: [issue.md](references/issue.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
