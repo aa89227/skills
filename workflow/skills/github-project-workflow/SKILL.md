@@ -4,13 +4,13 @@ description: |
   Operate a GitHub Issue, Project, pull request, branch, milestone, and release as one
   deterministic development workflow for feature, bug, improvement, refactor, chore, and
   documentation work. Use when an agent must create, resume, implement, review, integrate,
-  hand off, or release a GitHub-tracked requirement. Do not use for unrelated local work with
+  hand off, or release a GitHub-tracked requirement or initiative. Do not use for unrelated local work with
   no GitHub-tracked requirement.
 license: MIT
 metadata:
   author: aa89227
   version: "1.0"
-  tags: ["github", "project", "issue", "pull-request", "workflow", "release"]
+  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "workflow", "release"]
 ---
 
 # GitHub Project Development Workflow
@@ -30,6 +30,8 @@ local task with no tracked requirement, do not invent a Project lifecycle around
   context as a handoff record.
 - MUST keep the Issue body as the current canonical specification. Comments are history, not a
   required specification source.
+- MUST classify a request as one Requirement or an Initiative with child Requirements using
+  [references/epic.md](references/epic.md). The user does not need to manage that decomposition.
 - MUST write Issue requirements in plain, non-engineering language by default. When technical
   detail is necessary, define the term for the intended reader and keep implementation detail in
   the final Issue section as specified by [references/issue.md](references/issue.md).
@@ -47,6 +49,7 @@ local task with no tracked requirement, do not invent a Project lifecycle around
 | Artifact | Authoritative responsibility |
 | --- | --- |
 | Issue body | Requirement: problem, goal, scope, criteria, constraints, edge cases, open questions, and release note |
+| Parent Issue/sub-issues | Initiative hierarchy and aggregate planning context |
 | Pull request(s) | Review: implementation diff, CI, review discussion/history, and stack relationships |
 | Remote target branch | Integration: what is actually integrated |
 | GitHub Project Status | Lifecycle of the whole Issue, never one PR |
@@ -76,18 +79,29 @@ reopen a terminal Issue, or reuse it for new post-terminal work; create a new li
 Read the full matrix and criteria in
 [references/lifecycle.md](references/lifecycle.md).
 
+For large or uncertain product requests, `Discussion`, `Research`, `Prototype`, and `Delivery` are
+work-mode metadata, not lifecycle statuses. Read [references/epic.md](references/epic.md); do not
+create lifecycle statuses for those modes.
+
 ## Human approval gates
 
-Only these transitions require explicit human approval:
+The following are the workflow's human approval gates:
 
 - `Specifying` → `Ready`: the current specification is approved.
-- `In Review` → `Ready to Merge`: the current implementation is approved.
+- `In Review` → `Ready to Merge`: the current implementation is approved. For a
+  `Research`/`Prototype` item with no repository artifact, the human may approve the recorded
+  result by directly setting its Project Status to `Ready to Merge`.
 
 Silence, lack of comments, passing CI, passing tests, an agent's own review, another agent's
 opinion, an existing PR, or completed code MUST NOT be treated as approval. For this workflow,
-specification approval is a human Project Status change to `Ready`; implementation approval is a
-current native GitHub `APPROVED` review on every required PR. The human action/review must be
-verifiable and apply to the current specification or implementation.
+specification approval is a human Project Status change to `Ready`; Delivery implementation
+approval is a current native GitHub `APPROVED` review on every required PR; and no-artifact
+discovery approval is a human Project Status change to `Ready to Merge` after the recorded result
+is reviewable. The human action/review must be verifiable and apply to the current specification
+or implementation/result. `Cancelled` is not an approval gate, but it still requires a separate
+explicit human cancellation decision as defined in [references/lifecycle.md](references/lifecycle.md).
+For an `Initiative` parent, child approvals and accepted discovery results satisfy the aggregate
+gate; the parent has no implementation PR of its own.
 
 ## Session entry and exit
 
@@ -99,20 +113,23 @@ the records look consistent.
 
 At session end, update the canonical GitHub artifacts with the latest specification, status, PR
 description, pushed progress, verification, blockers, and stack relationship. Do not create a
-separate handoff file or force an unfinished task into review. If implementation has started but
-is incomplete, keep the Issue `In Progress` with a Draft PR; if implementation has not started,
-keep the truthful earlier status.
+separate handoff file or force an unfinished task into review. If Delivery implementation has
+started but is incomplete, keep the Issue `In Progress` with a Draft PR. If no-artifact discovery
+work has started but is incomplete, keep it `In Progress` and record the next evidence or
+experiment; if work has not started, keep the truthful earlier status.
 
 ## Reference routing
 
 Read only the references needed for the current operation:
 
 - Lifecycle transition, status criteria, approval, or cancellation: [lifecycle.md](references/lifecycle.md)
+- Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
 - Create or revise an Issue, type, acceptance criteria, open questions, or release note: [issue.md](references/issue.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
 - Branches, commits, rebase, force-push, merge, local integration, or unknown changes: [git.md](references/git.md)
 - Takeover, reconciliation, or session handoff: [session-protocol.md](references/session-protocol.md)
 - Milestone planning, eligibility, changelog, or GitHub Release: [release.md](references/release.md)
+- Short/medium/long planning, Roadmap view, dates, horizon, or confidence: [roadmap.md](references/roadmap.md)
 
 Do not load every reference for a simple operation. When an operation crosses domains, read the
 smallest set that covers all affected sources of truth.
@@ -124,9 +141,12 @@ smallest set that covers all affected sources of truth.
 - MUST NOT push implementation commits to the target branch before that implementation approval.
 - MUST prefer GitHub PR merge. Local integration is a controlled fallback only, and must follow
   [references/git.md](references/git.md) and reconcile every affected PR honestly.
-- MUST verify the remote target branch before setting `Done`; a GitHub PR labeled Merged alone is
-  insufficient.
+- MUST verify the remote target branch before setting `Done` for a Delivery Issue or any discovery
+  item with a repository artifact. For a Research/Prototype item with no artifact, MUST verify the
+  accepted findings are durable in the child and parent Issues; a GitHub PR labeled Merged alone is
+  insufficient in either case.
 - MUST NOT force-push the target branch, split an Issue merely because implementation is large,
-  use PR closing keywords, or fabricate a user-facing release note.
+  create an Initiative without the triggers in [references/epic.md](references/epic.md), use PR
+  closing keywords, or fabricate a user-facing release note.
 - MUST use semantic branch names and the repository's actual target branch; `main` is never an
   assumed target.

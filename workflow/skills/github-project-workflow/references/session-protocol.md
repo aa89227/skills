@@ -8,6 +8,10 @@ do not create a separate `HANDOFF.md` or rely on conversation history.
 
 The agent MUST perform context recovery before implementation or a lifecycle transition.
 
+If the Issue is part of an Initiative, also recover the parent Issue, native parent/sub-issue
+relationship, sibling child Issues, each child's `Issue Role` and `Work Mode`, and the aggregate
+completion state. Do not assume the parent or the newest child represents the complete work.
+
 ### 1. Recover the requirement
 
 Read the Primary Issue's:
@@ -21,7 +25,8 @@ Read the Primary Issue's:
 - constraints and edge cases;
 - open questions and their blocking state; and
 - Release Note; and
-- selected Issue language from `Workflow Metadata`.
+- selected Issue language, Issue Role, Parent Issue, Work Mode, and Approval Source from
+  `Workflow Metadata`.
 
 If the Issue body is stale, incomplete, or contradicts current human decisions, update the body or
 stop for clarification before implementation. Do not reconstruct the requirement from comments
@@ -30,7 +35,9 @@ alone.
 ### 2. Recover workflow metadata
 
 Read Project Status, `Blocked`, `Blocked By`, `Unblocking Condition`, and other repository-defined
-metadata relevant to the Issue. Confirm that Project Status describes the Issue rather than one PR.
+metadata relevant to the Issue. For roadmap-managed work, also recover `Roadmap Horizon`,
+`Roadmap Confidence`, `Start Date`, `Target Date`, and `Next Milestone` when those fields exist.
+Confirm that Project Status describes the Issue rather than one PR.
 
 ### 3. Recover implementation and review
 
@@ -95,9 +102,11 @@ Before ending a session, the agent MUST ensure:
 - blocker reason and unblocking condition are recorded when blocked; and
 - stack base/head relationships are correct.
 
-If implementation has begun but is incomplete, keep `In Progress` and a Draft PR. If the work is
-still specifying, keep `Specifying`; if it is approved but not started, keep `Ready`. Session end
-does not justify `In Review`, `Ready to Merge`, `Done`, or `Cancelled`.
+If Delivery implementation has begun but is incomplete, keep `In Progress` and a Draft PR. If
+Research/Prototype work without a repository artifact has begun but is incomplete, keep `In
+Progress` and record the next evidence or experiment; no PR is required. If the work is still
+specifying, keep `Specifying`; if it is approved but not started, keep `Ready`. Session end does
+not justify `In Review`, `Ready to Merge`, `Done`, or `Cancelled`.
 
 Do not create a verbose session summary. The Issue body, Project metadata, PRs, branches, and
 verification records must contain the durable handoff information.

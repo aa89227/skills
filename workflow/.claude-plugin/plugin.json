@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for controlled investigation, discussion, reporting, documentation, handoff, review, integration, and release.",
-  "version": "2.7.2",
+  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for controlled investigation, discussion, initiative decomposition, roadmap planning, reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.8.0",
   "author": {
     "name": "aa89227"
   }

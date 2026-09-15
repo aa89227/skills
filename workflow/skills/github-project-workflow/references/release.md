@@ -17,6 +17,11 @@ Only an Issue with `Status = Done` and verified content in the commit targeted b
 is eligible for that release. `Milestone = v1.4.0` alone is insufficient. A Done Issue whose
 changes are absent from the tag target commit MUST be excluded and investigated.
 
+An `Issue Role: Initiative` parent MUST NOT be release-eligible. A `Work Mode: Research` or
+`Prototype` child is not release-eligible until it is explicitly converted to `Delivery`. Release
+notes are sourced from completed `Requirement` Issues with `Work Mode: Delivery`; a Prototype must
+be explicitly converted to Delivery before it can ship.
+
 Before a release, incomplete milestone Issues MUST be moved to the explicitly configured `Next
 Milestone` or otherwise replanned. The agent MAY perform that move only when the next milestone is
 explicitly known in Project or repository release metadata; it MUST ask or report the unresolved

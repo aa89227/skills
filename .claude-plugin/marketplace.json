@@ -24,7 +24,7 @@
     {
       "name": "workflow",
       "source": "./workflow",
-      "description": "Workflow skills for controlled investigation, discussion, Git work, GitHub Project lifecycle, review, integration, handoff, and release.",
+      "description": "Workflow skills for controlled investigation, discussion, Git work, automatic initiative decomposition, roadmap planning, GitHub Project lifecycle, review, integration, handoff, and release.",
       "author": {
         "name": "aa89227"
       }

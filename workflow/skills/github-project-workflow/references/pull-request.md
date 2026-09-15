@@ -16,6 +16,9 @@ Replace `#123` with the actual Issue number. Do not use `Closes #123`, `Fixes #1
 mention non-primary context, but it MUST NOT create ambiguity about the one Primary Issue or enable
 automatic closure.
 
+The Primary Issue MUST be a `Requirement` child when the work belongs to an Initiative. An
+`Initiative` parent MUST NOT be used as the Primary Issue for implementation.
+
 ## PR body
 
 Keep the body concise and use this structure. Do not copy the complete Issue specification into a

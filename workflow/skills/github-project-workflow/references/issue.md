@@ -1,7 +1,8 @@
 # Issue Specification
 
 Use this reference when creating or revising a GitHub Issue, deciding whether a requirement is
-ready for implementation, or recording a requirement/release-note change.
+ready for implementation, or recording a requirement/release-note change. For parent Initiative
+decomposition and discovery work, also read [epic.md](epic.md).
 
 ## Requirement boundary
 
@@ -9,6 +10,10 @@ One Issue MUST represent one logical requirement. Implementation size, number of
 PRs, or use of a stack MUST NOT by itself cause the agent to split the Issue. Split only when the
 work contains separate logical requirements and the human or repository policy authorizes that
 split. Use multiple or stacked PRs for a large implementation of one requirement.
+
+An `Issue Role: Initiative` parent is a planning-container exception: it groups two or more child
+Requirements through GitHub's native parent/sub-issue relationship and has no implementation PR of
+its own. Each child remains one logical requirement and follows this specification.
 
 The Issue body is the canonical current specification. When a requirement changes, update the body
 before changing lifecycle or implementation. Do not leave the new requirement only in a comment.
@@ -123,6 +128,10 @@ None
 ## Workflow Metadata
 
 - Language: <selected user language>
+- Issue Role: Requirement
+- Parent Issue: None
+- Work Mode: Delivery
+- Approval Source: None
 - Type: Feature
 - Blocked: No
 - Blocked By: None
