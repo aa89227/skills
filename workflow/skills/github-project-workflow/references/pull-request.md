@@ -65,6 +65,21 @@ GitHub-native base/head branch relationship is authoritative.
   lifecycle statuses. Implementation work routes to `In Progress`; a material requirement change
   routes to `Specifying`.
 
+## Review findings and Issue Priority
+
+Classify each review finding independently as one of:
+
+- `Blocking`: the current PR cannot be approved until the finding is addressed or explicitly
+  resolved.
+- `Non-blocking`: the finding should be addressed or tracked, but does not prevent approval of
+  the current implementation.
+- `Informational`: context, preference, or an observation that does not require work.
+
+A review classification is not an Issue Priority. A `Blocking` finding is not automatically `P0`,
+and a security-related finding is not automatically high Priority. If a finding needs independent
+tracking, create or update the relevant Issue and apply [priority.md](priority.md), including a
+reason and evidence. Priority changes do not bypass lifecycle or human approval gates.
+
 The agent MUST NOT self-approve, merge before human implementation approval, or infer approval from
 silence, passing checks, or another agent.
 

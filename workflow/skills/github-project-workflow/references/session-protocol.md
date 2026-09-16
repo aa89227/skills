@@ -20,6 +20,7 @@ Read the Primary Issue's:
 - GitHub open/closed state;
 - Project Status;
 - Type;
+- Project Priority and its Issue-body rationale;
 - Milestone, including `None`;
 - acceptance criteria;
 - constraints and edge cases;
@@ -34,8 +35,8 @@ alone.
 
 ### 2. Recover workflow metadata
 
-Read Project Status, `Blocked`, `Blocked By`, `Unblocking Condition`, and other repository-defined
-metadata relevant to the Issue. For roadmap-managed work, also recover `Roadmap Horizon`,
+Read Project Status, Project Priority, `Blocked`, `Blocked By`, `Unblocking Condition`, and other
+repository-defined metadata relevant to the Issue. For roadmap-managed work, also recover `Roadmap Horizon`,
 `Roadmap Confidence`, `Start Date`, `Target Date`, and `Next Milestone` when those fields exist.
 Confirm that Project Status describes the Issue rather than one PR.
 
@@ -65,8 +66,8 @@ Compare these four dimensions:
 
 | Dimension | Question |
 | --- | --- |
-| Project | What lifecycle status and blocker metadata are recorded? |
-| Issue | Is the requirement body current, and is the Issue open or closed? |
+| Project | What lifecycle status, Priority, and blocker metadata are recorded? |
+| Issue | Is the requirement body, Priority rationale, and Issue open/closed state current? |
 | PRs | What is reviewed, approved, merged, closed, draft, or failing? |
 | Remote repository | What content is actually in the target branch? |
 
@@ -95,7 +96,7 @@ allowed transition only after the evidence and approval conditions are satisfied
 Before ending a session, the agent MUST ensure:
 
 - the Issue body is the latest canonical specification;
-- Project Status and blocker metadata reflect verified facts;
+- Project Status, Priority, Priority rationale, and blocker metadata reflect verified facts;
 - every PR description has the correct Primary Issue, summary, verification, and stack context;
 - necessary implementation progress is pushed to the implementation branch;
 - verification results and known limitations are recorded;

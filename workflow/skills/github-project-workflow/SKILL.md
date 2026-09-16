@@ -9,8 +9,8 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
-  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "workflow", "checkpoint", "release"]
+  version: "1.2"
+  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "workflow", "checkpoint", "release"]
 ---
 
 # GitHub Project Development Workflow
@@ -35,6 +35,12 @@ local task with no tracked requirement, do not invent a Project lifecycle around
 - MUST write Issue requirements in plain, non-engineering language by default. When technical
   detail is necessary, define the term for the intended reader and keep implementation detail in
   the final Issue section as specified by [references/issue.md](references/issue.md).
+- MUST treat Issue Priority as planning metadata, not a lifecycle status, review result, severity
+  score, or roadmap horizon; use only the values and rules in [references/priority.md](references/priority.md).
+- MUST record a reason and supporting evidence whenever Priority is assigned or changed. Do not
+  raise Priority for a speculative security concern, a category label, or elapsed time alone.
+- MUST keep a review finding's `Blocking`, `Non-blocking`, or `Informational` classification
+  separate from the Issue's Priority.
 - MUST use only the lifecycle statuses defined below. `Blocked`, `CI Failed`, `Changes Requested`,
   and `Waiting` are metadata or signals, never lifecycle statuses.
 - MUST run the transition protocol in
@@ -55,10 +61,18 @@ local task with no tracked requirement, do not invent a Project lifecycle around
 | Pull request(s) | Review: implementation diff, CI, review discussion/history, and stack relationships |
 | Remote target branch | Integration: what is actually integrated |
 | GitHub Project Status | Lifecycle of the whole Issue, never one PR |
+| GitHub Project Priority or Issue Workflow Metadata | Current action order for the whole Issue; its reason and evidence remain in the Issue body |
 | GitHub Milestone | Planned release version |
 | Git release tag | Exact commit selected as a release target |
 | GitHub Release | Published version |
 | Issue Release Note | User-facing change description |
+
+## Priority
+
+Priority expresses the current action order for an Issue. It does not describe technical severity,
+replace a review finding classification, move lifecycle Status, authorize implementation or merge,
+or substitute for a Milestone or roadmap field. Use [references/priority.md](references/priority.md)
+when assigning or reassessing it.
 
 ## Lifecycle
 
@@ -128,6 +142,7 @@ Read only the references needed for the current operation:
 - Checkpoint output, pause/resume behavior, or next-action reporting: [checkpoint.md](references/checkpoint.md)
 - Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
 - Create or revise an Issue, type, acceptance criteria, open questions, or release note: [issue.md](references/issue.md)
+- Assign or reassess Issue Priority and record its rationale: [priority.md](references/priority.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
 - Branches, commits, rebase, force-push, merge, local integration, or unknown changes: [git.md](references/git.md)
 - Takeover, reconciliation, or session handoff: [session-protocol.md](references/session-protocol.md)

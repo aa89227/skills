@@ -68,6 +68,13 @@ The GitHub Milestone field represents the planned release. It MAY be unset (`Non
 MUST NOT guess a release version. Milestone and lifecycle Status are independent dimensions; for
 example, `In Progress` plus milestone `v1.4.0` is valid.
 
+When a Project exposes a `Priority` field, every Issue MUST use one of `Untriaged`, `P0`, `P1`, or
+`P2`, with `Untriaged` as the default when triage evidence is insufficient. If the field is not
+available, record the same value in `Workflow Metadata`. The Issue body MUST contain a
+`Priority Rationale` whenever the value is assigned or changed; the rationale must state both the
+reason and its evidence. `P1` requires an existing or Human-supplied exact Milestone or Target
+Date. Do not invent a date, Milestone, or Priority commitment.
+
 Use the Project's existing `Blocked`, `Blocked By`, and `Unblocking Condition` fields when
 available. Otherwise use the `Workflow Metadata` block below. Keep the metadata truthful; a block
 does not change lifecycle Status.
@@ -133,6 +140,8 @@ None
 - Work Mode: Delivery
 - Approval Source: None
 - Type: Feature
+- Priority: Untriaged
+- Priority Rationale: None
 - Blocked: No
 - Blocked By: None
 - Unblocking Condition: None
@@ -172,6 +181,10 @@ The following are material requirement changes and MUST return the lifecycle to 
 - scope or out-of-scope;
 - user-visible behavior; or
 - an important constraint.
+
+Changing Priority alone is not a material requirement change and does not require a lifecycle
+transition. If the new rationale reveals a change to behavior, scope, acceptance criteria, or an
+important constraint, apply the material-change rule above.
 
 Changing an implementation detail without changing those requirements does not require a new
 specification approval. When in doubt, treat the change as material and stop for explicit human
