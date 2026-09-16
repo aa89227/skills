@@ -24,7 +24,7 @@
     {
       "name": "workflow",
       "source": "./workflow",
-      "description": "Workflow skills for controlled investigation, discussion, Git work, automatic initiative decomposition, roadmap planning, priority planning, checkpoint reporting, GitHub Project lifecycle, review, integration, handoff, and release.",
+      "description": "Workflow skills for GitHub Project initialization, controlled investigation, discussion, Git work, automatic initiative decomposition, roadmap planning, priority planning, checkpoint reporting, lifecycle, review, integration, handoff, and release.",
       "author": {
         "name": "aa89227"
       }

@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
-  "version": "2.10.0",
+  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.11.0",
   "author": {
     "name": "aa89227"
   }

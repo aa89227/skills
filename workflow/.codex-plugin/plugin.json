@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "version": "2.10.0",
-  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.11.0",
+  "description": "Portable workflow modes, Git utilities, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
   "author": {
     "name": "aa89227",
     "email": "aa89227@gmail.com",
@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "Workflow and GitHub Development",
     "shortDescription": "Workflow modes, Git utilities, and GitHub Project development lifecycle.",
-    "longDescription": "Workflow-control skills for read-only investigation, discussion, direct answers, summaries, verified user manuals, external repository inspection, detached-HEAD checkouts, ticket-scoped worktrees, automatic GitHub initiative decomposition, roadmap planning, priority planning, checkpoint reporting, and deterministic GitHub Issue/Project/PR/release handoffs.",
+    "longDescription": "Workflow-control skills for GitHub Project initialization, read-only investigation, discussion, direct answers, summaries, verified user manuals, external repository inspection, detached-HEAD checkouts, ticket-scoped worktrees, automatic GitHub initiative decomposition, roadmap planning, priority planning, checkpoint reporting, and deterministic GitHub Issue/Project/PR/release handoffs.",
     "developerName": "aa89227",
     "category": "Development",
     "defaultPrompt": [
@@ -22,7 +22,7 @@
       "Constrain the agent to read-only or discussion-only behavior",
       "Produce verified, self-reviewed documentation and work summaries",
       "Manage ticket-scoped git worktrees and external repo clones",
-      "Coordinate GitHub Project lifecycle, review, integration, and release state"
+      "Initialize and coordinate GitHub Project workflow, lifecycle, review, integration, and release state"
     ]
   },
   "skills": "./skills/"

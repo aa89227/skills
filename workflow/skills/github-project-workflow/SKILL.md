@@ -3,14 +3,14 @@ name: github-project-workflow
 description: |
   Operate a GitHub Issue, Project, pull request, branch, milestone, and release as one
   deterministic development workflow for feature, bug, improvement, refactor, chore, and
-  documentation work. Use when an agent must create, resume, implement, review, integrate,
-  hand off, or release a GitHub-tracked requirement or initiative. Do not use for unrelated local work with
-  no GitHub-tracked requirement.
+  documentation work. Use when an agent must initialize, inspect, create, resume, implement,
+  review, integrate, hand off, or release a GitHub-tracked requirement or initiative. Do not use
+  for unrelated local work with no GitHub-tracked requirement.
 license: MIT
 metadata:
   author: aa89227
-  version: "1.2"
-  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "workflow", "checkpoint", "release"]
+  version: "1.3"
+  tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
 # GitHub Project Development Workflow
@@ -41,6 +41,11 @@ local task with no tracked requirement, do not invent a Project lifecycle around
   raise Priority for a speculative security concern, a category label, or elapsed time alone.
 - MUST keep a review finding's `Blocking`, `Non-blocking`, or `Informational` classification
   separate from the Issue's Priority.
+- MUST use [references/initialization.md](references/initialization.md) for GitHub Project workflow
+  initialization, setup, or inspection requests. The initial inventory is read-only, and external
+  Project, Issue, PR, Workflow, or Label changes require explicit confirmation after the report.
+- MUST keep Project Status, Labels, and Priority as orthogonal concerns: Status controls lifecycle,
+  Labels classify and support search, and Priority controls Issue action order.
 - MUST use only the lifecycle statuses defined below. `Blocked`, `CI Failed`, `Changes Requested`,
   and `Waiting` are metadata or signals, never lifecycle statuses.
 - MUST run the transition protocol in
@@ -60,6 +65,7 @@ local task with no tracked requirement, do not invent a Project lifecycle around
 | Parent Issue/sub-issues | Initiative hierarchy and aggregate planning context |
 | Pull request(s) | Review: implementation diff, CI, review discussion/history, and stack relationships |
 | Remote target branch | Integration: what is actually integrated |
+| GitHub Project workflow configuration | Auto-add rules, item-added rules, field definitions, and automations; changes require explicit setup confirmation |
 | GitHub Project Status | Lifecycle of the whole Issue, never one PR |
 | GitHub Project Priority or Issue Workflow Metadata | Current action order for the whole Issue; its reason and evidence remain in the Issue body |
 | GitHub Milestone | Planned release version |
@@ -143,6 +149,7 @@ Read only the references needed for the current operation:
 - Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
 - Create or revise an Issue, type, acceptance criteria, open questions, or release note: [issue.md](references/issue.md)
 - Assign or reassess Issue Priority and record its rationale: [priority.md](references/priority.md)
+- Initialize, inspect, or configure Project fields, workflows, automations, and Labels: [initialization.md](references/initialization.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
 - Branches, commits, rebase, force-push, merge, local integration, or unknown changes: [git.md](references/git.md)
 - Takeover, reconciliation, or session handoff: [session-protocol.md](references/session-protocol.md)
