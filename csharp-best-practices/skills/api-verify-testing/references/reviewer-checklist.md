@@ -4,6 +4,11 @@ When reviewing API integration test code, you **must** use the Todo tool or crea
 
 ## Checklist
 
+### Framework Selection
+- [ ] Target test project's framework is identified from the user choice or existing project convention
+- [ ] New projects without a convention explicitly choose NUnit or xUnit before scaffolding
+- [ ] Only the selected framework's test attributes, lifecycle, assertions, and Verify adapter are used
+
 ### Infrastructure
 - [ ] Test class inherits from `ApiTestBase`
 - [ ] No manual auth header handling (auto-attached by TestServer)
@@ -26,6 +31,11 @@ When reviewing API integration test code, you **must** use the Todo tool or crea
 - [ ] When bypassing API, use `Server.GetRequiredService<T>()` to resolve services from DI container
 - [ ] Shared setup helpers are placed in `TestHelper` as extension methods on `TestServer`
 - [ ] No duplicated setup logic that could be extracted into shared helpers
+
+### NUnit-specific
+- [ ] NUnit tests use `[Test]` and the NUnit assertion API
+- [ ] Per-test setup uses NUnit lifecycle hooks such as `[SetUp]` when lifecycle setup is required
+- [ ] Verify adapter is `Verify.NUnit`
 
 ### External Service Testing
 - [ ] External HTTP dependencies use `FakeHttpHandler` — not mocked via DI service replacement

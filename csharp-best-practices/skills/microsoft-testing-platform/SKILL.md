@@ -14,7 +14,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
   tags: ["csharp", "dotnet", "testing", "microsoft-testing-platform", "mtp", "test-runner", "ci"]
   trigger_keywords: ["Microsoft Testing Platform", "MTP", "Microsoft.Testing.Platform", "MSTest.Sdk", "EnableMSTestRunner", "EnableNUnitRunner", "UseMicrosoftTestingPlatformRunner", "testconfig.json", "MTP migration"]
 ---
@@ -29,6 +29,21 @@ follow its instructions without rereading the file on every turn or before every
 Reread it only when the file may have changed, the current context no longer contains its
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
+
+## Choose the Test Framework Before the MTP Runner
+
+MTP is the test platform; it does not choose the test framework. Before scaffolding or changing a
+test project:
+
+1. Inspect the target project and nearby tests for an established framework. Preserve it rather
+   than migrating implicitly.
+2. If a new project has no convention and the request is open between NUnit and xUnit, ask the user
+   to choose one before adding the framework packages or runner configuration.
+3. If the user explicitly requests MSTest or TUnit, or the repository already uses one, follow
+   that explicit choice. For an NUnit/xUnit choice, use only the selected framework's attributes,
+   assertions, fixtures, packages, and runner integration.
+4. The order of the framework matrix and examples is not a default; never select NUnit merely
+   because it appears before xUnit in a list.
 
 ## Package Installation
 

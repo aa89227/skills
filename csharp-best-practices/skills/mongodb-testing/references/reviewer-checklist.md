@@ -4,6 +4,11 @@ When reviewing MongoDB test code, you **must** use the Todo tool or create a che
 
 ## Checklist
 
+### Framework Selection
+- [ ] Target test project's framework is identified from the user choice or existing project convention
+- [ ] New projects without a convention explicitly choose NUnit or xUnit before scaffolding
+- [ ] Test attributes, lifecycle hooks, fixtures, assertions, and Verify adapters are not mixed across frameworks
+
 ### Strongly-Typed Operations
 - [ ] Filter, Update, Sort, Projection all use lambda expressions
 - [ ] No magic strings (e.g., `Filter.Eq("_id", id)` or `Update.Set("Name", name)`)

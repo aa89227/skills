@@ -10,7 +10,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
   tags: ["testing", "api", "verify", "snapshot", "integration-test", "nunit", "xunit"]
 ---
 
@@ -25,18 +25,42 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Frameworks:** NUnit 4.x + Verify.NUnit **or** xUnit v3 + Verify.XunitV3, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
+**Frameworks:** NUnit + Verify.NUnit **or** xUnit.net + Verify.XunitV3, Microsoft.AspNetCore.Mvc.Testing,
+Testcontainers
 
 > **xUnit v2 note:** Replace `ValueTask` with `Task` and `[Collection<T>]` with `[Collection("name")]`.
+
+## Choose a Test Framework First
+
+Before adding packages or generating test code:
+
+1. Inspect the target test project and nearby tests. Preserve an established NUnit or xUnit
+   convention; do not migrate it implicitly.
+2. For a new project with no convention and no explicit user choice, ask the user to choose
+   **NUnit or xUnit** before scaffolding the test project.
+3. Use only the selected framework's Verify adapter, fixtures, lifecycle hooks, test attributes,
+   and assertions. The two branches below are alternatives, not a combined setup.
+4. Do not choose NUnit just because its section or example appears first.
 
 ## Package Installation
 
 When introducing a test dependency, resolve the latest stable release from the online NuGet feed at
 task time. Add it with the package CLI without `--version`—for example,
-`dotnet package add Verify.NUnit --project <path-to-test-project>` on .NET 10+, or
-`dotnet add <path-to-test-project> package Verify.NUnit` on older SDKs. Do not copy a version from
-this skill, an example, or memory, and do not hand-edit a `PackageReference`; let the CLI/package
-manager record the version it resolved in the project or central package file.
+the selected framework's packages on .NET 10+, with the corresponding `dotnet add <path-to-test-project> package <PackageId>` form on older SDKs:
+
+```bash
+# NUnit branch
+dotnet package add NUnit --project <path-to-test-project>
+dotnet package add Verify.NUnit --project <path-to-test-project>
+
+# xUnit.net branch
+# dotnet package add xunit.v3 --project <path-to-test-project>
+# dotnet package add Verify.XunitV3 --project <path-to-test-project>
+```
+
+Add only the branch selected for the target project. Do not copy a version from this skill, an
+example, or memory, and do not hand-edit a `PackageReference`; let the CLI/package manager record
+the version it resolved in the project or central package file.
 
 ## General Rules
 
@@ -220,9 +244,9 @@ private async Task VerifyJsonSnapshotAsync(string json, string snapshotName)
 - NUnit uses `Verify.NUnit`; xUnit v3 uses `Verify.XunitV3` — the API is identical.
 - xUnit does **not** need `[UsesVerify]` or `partial class`.
 
-## Test Structure
+## Test Structure (use the selected framework branch)
 
-### NUnit
+### NUnit branch
 
 ```csharp
 public sealed class FeatureNameAcceptanceTest : ApiTestBase
@@ -268,7 +292,7 @@ Rules:
 - `file static class Given / When / Then` — file-scoped, not visible outside the file.
 - Simple scenarios can use `private` helper methods instead of Given/When/Then classes.
 
-### xUnit v3
+### xUnit v3 branch
 
 ```csharp
 public sealed class FeatureNameAcceptanceTest(TestServer server) : ApiTestBase(server)
@@ -555,23 +579,28 @@ Assert.Empty(Server.SmsHandler.Requests);
 
 ## Best Practices
 
-1. **One test = one scenario** — each test method tests one specific behavior.
-2. **Prefer API for data setup** — only bypass when the API doesn't support the operation.
-3. **Descriptive snapshot names** — use `"FeatureName.ScenarioDescription"` format for easy identification.
-4. **Don't assert intermediate steps** — focus on the final response shape via Verify.
-5. **Keep Given/When/Then helpers focused** — each helper does one thing.
-6. **Use deterministic data** — rely on `FakeIdGenerator` and fixed test values for reproducible snapshots.
-7. **Use domain language for naming** — test methods and helpers should clearly describe the scenario.
+1. **Choose the framework first** — preserve an existing convention or ask the user to choose NUnit
+   or xUnit before scaffolding a new test project; never infer NUnit from the examples.
+2. **One test = one scenario** — each test method tests one specific behavior.
+3. **Prefer API for data setup** — only bypass when the API doesn't support the operation.
+4. **Descriptive snapshot names** — use `"FeatureName.ScenarioDescription"` format for easy identification.
+5. **Don't assert intermediate steps** — focus on the final response shape via Verify.
+6. **Keep Given/When/Then helpers focused** — each helper does one thing.
+7. **Use deterministic data** — rely on `FakeIdGenerator` and fixed test values for reproducible snapshots.
+8. **Use domain language for naming** — test methods and helpers should clearly describe the scenario.
 
 ## Additional Resources
 
 ### Example Files
 
 Complete `.cs` examples in `examples/`:
-- **`examples/complete-api-test.cs`** — NUnit: typed HttpClient extension, TestHelper, and test class with Verify snapshots
-- **`examples/complete-api-test-xunit.cs`** — xUnit v3: same example adapted with `ICollectionFixture` and `IAsyncLifetime`
-- **`examples/external-service-test.cs`** — NUnit: FakeHttpHandler setup, TestServer registration, and request body/header assertion
-- **`examples/external-service-test-xunit.cs`** — xUnit v3: same external service tests adapted for xUnit
+- **`examples/complete-api-test.cs`** — NUnit branch: typed HttpClient extension, TestHelper, and test class with Verify snapshots
+- **`examples/complete-api-test-xunit.cs`** — xUnit v3 branch: same example adapted with `ICollectionFixture` and `IAsyncLifetime`
+- **`examples/external-service-test.cs`** — NUnit branch: FakeHttpHandler setup, TestServer registration, and request body/header assertion
+- **`examples/external-service-test-xunit.cs`** — xUnit v3 branch: same external service tests adapted for xUnit
+
+Select the example matching the target project's framework; the filenames do not establish a
+default.
 
 ### Reference Files
 

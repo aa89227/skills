@@ -1,16 +1,16 @@
 ---
 name: test-conventions
 description: |
-  General test structure conventions using NUnit [Description] with Given/When/Then BDD format
+  Framework-neutral test structure conventions for NUnit or xUnit using Given/When/Then BDD format
   and Arrange/Act/Assert comments inside test methods. Use when writing or reviewing any test class
-  to ensure consistent test structure and readability.
+  to ensure the selected framework is applied consistently with readable scenarios.
   Trigger phrases: "test convention", "test structure", "Given When Then", "Arrange Act Assert",
-  "test description", "Scenario test", "BDD test", "write test".
+  "test description", "Scenario test", "BDD test", "write test", "NUnit test", "xUnit test".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
-  tags: ["testing", "conventions", "nunit", "bdd", "best-practices"]
+  version: "1.1"
+  tags: ["testing", "conventions", "nunit", "xunit", "bdd", "best-practices"]
 ---
 
 # Test Conventions
@@ -24,17 +24,42 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Framework:** NUnit 4.x
+**Supported frameworks:** NUnit or xUnit.net. Choose one framework for the target test project and
+apply its attributes, lifecycle, assertions, and test-project packages consistently.
+
+## Choose a Test Framework First
+
+Before writing or scaffolding tests:
+
+1. Inspect the target test project and nearby tests for an existing framework. Preserve an
+   established NUnit or xUnit convention; do not migrate it implicitly.
+2. If the project is new or has no established convention and the user has not specified one, ask
+   the user to choose **NUnit or xUnit** before generating test code or installing test packages.
+3. Use only the selected framework's test attributes, lifecycle hooks, fixtures, assertions, and
+   integration packages. Do not mix NUnit and xUnit APIs in one test project.
+4. The order of the examples in this file is not a default. Never select NUnit merely because an
+   example or a template appears first.
 
 ## General Rules
 
-- Every test method **must** have a `[Description]` attribute describing the scenario in Given/When/Then format.
+- Every test method **must** express its scenario in Given/When/Then form. NUnit may carry the
+  text in `[Description]`; xUnit should express the same intent in a descriptive method name and,
+  when useful, searchable traits.
 - Test method name is the **Scenario** summary in the domain language.
 - Inside the method, use `// Arrange`, `// Act`, `// Assert` comments to separate phases.
 
+## Framework Mapping
+
+| Concern | NUnit | xUnit.net |
+|---|---|---|
+| Test declaration | `[Test]` | `[Fact]` or `[Theory]` |
+| Scenario metadata | `[Description("""...""")]` | Descriptive method name; optional `[Trait]` |
+| Per-test lifecycle | `[SetUp]` / `[TearDown]` when needed | Constructor or `IAsyncLifetime` when needed |
+| Assertions | `Assert.That(actual, Is.EqualTo(expected))` | `Assert.Equal(expected, actual)` |
+
 ## Test Structure
 
-### [Description] Format
+### NUnit: `[Description]` Format
 
 ```csharp
 [Test]
@@ -61,9 +86,36 @@ public async Task QueryProductListForCategory()
 }
 ```
 
+### xUnit: method-name BDD format
+
+xUnit has no built-in equivalent of NUnit's multiline `[Description]`. Keep the same BDD content
+in the method name and use `[Fact]` or `[Theory]`:
+
+```csharp
+[Fact]
+public async Task QueryProductListForCategory_WhenCategoryHasTwoProducts_ReturnsTwoProducts()
+{
+    // Arrange
+    var categoryId = await Server.CreateCategory();
+    await Server.CreateProduct(categoryId, "Widget A");
+    await Server.CreateProduct(categoryId, "Widget B");
+
+    // Act
+    var response = await Client.Product().GetProductsByCategoryAsync(categoryId);
+
+    // Assert
+    response.EnsureSuccessStatusCode();
+    var json = await response.Content.ReadAsStringAsync();
+    await VerifyJsonSnapshotAsync(json, "Product.QueryByCategory");
+}
+```
+
 ### Expect List (optional — under Then)
 
 When `Then` alone cannot clearly express what the test focuses on (e.g., complex responses, framework-level assertions), add a bullet list of **behavior-level** expectations:
+
+The example below uses NUnit's `[Description]`. For xUnit, omit the NUnit attributes and encode the
+same scenario in the test method name as shown in the xUnit example above.
 
 ```csharp
 [Test]
@@ -102,6 +154,9 @@ Rules:
 ### Multi-step Scenario (optional When/Then)
 
 When a test needs to verify a sequence of behaviors:
+
+The example below uses NUnit. For xUnit, use `[Fact]`, a descriptive method name, and the xUnit
+assertion API while retaining the repeated `// Act` and `// Assert` phases.
 
 ```csharp
 [Test]
@@ -146,12 +201,16 @@ public async Task RemoveTagThenQueryShouldBeEmpty()
 
 ## Rules
 
-1. **`[Description]` is mandatory** — every `[Test]` method must have one.
-2. **Scenario as method name** — concise, in domain language, describes the scenario.
-3. **`// Arrange`, `// Act`, `// Assert`** — always present, in this order.
-4. **Multi-step**: repeat `// Act` and `// Assert` pairs when verifying sequential behaviors.
-5. **One scenario per test** — don't combine unrelated assertions.
-6. **Expect list is optional** — only add when `Then` alone cannot clarify what the test focuses on. List behavior-level expectations, not field-level details.
+1. **Framework is explicit** — preserve the repository convention or obtain the user's NUnit/xUnit
+   choice before scaffolding a new test project.
+2. **Use the selected declaration** — `[Test]` for NUnit; `[Fact]`/`[Theory]` for xUnit.
+3. **Describe the scenario** — NUnit uses a mandatory `[Description]`; xUnit uses a descriptive
+   method name because it has no equivalent built-in multiline description attribute.
+4. **`// Arrange`, `// Act`, `// Assert`** — always present, in this order.
+5. **Multi-step**: repeat `// Act` and `// Assert` pairs when verifying sequential behaviors.
+6. **One scenario per test** — don't combine unrelated assertions.
+7. **Expect list is optional** — only add when `Then` alone cannot clarify what the test focuses on.
+   List behavior-level expectations, not field-level details.
 
 ## Additional Resources
 

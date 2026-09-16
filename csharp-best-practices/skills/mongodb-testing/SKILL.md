@@ -11,11 +11,12 @@ description: |
   Trigger phrases: "MongoDB test", "Testcontainers MongoDB", "BSON test", "serialization test",
   "MongoDB integration test", "snapshot BSON", "test data MongoDB", "Atlas Local test",
   "Atlas Search test", "SearchTestBase", "atlas-local testcontainer", "search index test",
-  "SearchIndexDefinitionBuilder", "AtlasSearchIndexManager", "wait for search index".
+  "SearchIndexDefinitionBuilder", "AtlasSearchIndexManager", "wait for search index", "NUnit test",
+  "xUnit test".
 license: MIT
 metadata:
   author: aa89227
-  version: "3.1"
+  version: "3.2"
   tags: ["testing", "mongodb", "testcontainers", "bson", "integration-test", "verify", "atlas-local", "atlas-search"]
 ---
 
@@ -30,9 +31,22 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Frameworks:** NUnit 4.x, xUnit 2.x, Testcontainers.MongoDb 4.x, MongoDB.Driver 3.x, Verify.NUnit / Verify.Xunit
+**Frameworks:** NUnit or xUnit.net (the xUnit examples use the v3 lifecycle), Testcontainers.MongoDb,
+MongoDB.Driver, Verify.NUnit / Verify.XunitV3
 
 Complements the **`mongodb-strongly-typed`** skill — this skill covers the **testing** side.
+
+## Choose a Test Framework First
+
+Before adding test packages or generating test code:
+
+1. Inspect the target test project and nearby tests. Preserve an established NUnit or xUnit
+   convention; do not migrate it implicitly.
+2. For a new project with no convention and no explicit user choice, ask the user to choose
+   **NUnit or xUnit** before scaffolding the test project.
+3. Use only the selected framework's package adapter, test attributes, fixtures, lifecycle hooks,
+   and assertions. The NUnit and xUnit sections below are alternatives, not a combined setup.
+4. Do not choose NUnit just because its section or example appears first.
 
 ## Package Installation
 
@@ -43,6 +57,15 @@ task time. Use the package CLI without `--version`, for example:
 # .NET 10+
 dotnet package add Testcontainers.MongoDb --project <path-to-test-project>
 dotnet package add MongoDB.Driver --project <path-to-test-project>
+
+# Choose exactly one framework branch:
+# NUnit
+dotnet package add NUnit --project <path-to-test-project>
+dotnet package add Verify.NUnit --project <path-to-test-project>
+
+# xUnit.net
+# dotnet package add xunit.v3 --project <path-to-test-project>
+# dotnet package add Verify.XunitV3 --project <path-to-test-project>
 
 # .NET 9 and earlier: use `dotnet add <project> package <PackageId>` instead
 ```
@@ -173,7 +196,9 @@ Key differences from `mongo:8.0`:
 | CRUD, transactions, change streams | `mongo:8.0` + `.WithReplicaSet()` |
 | `$search`, `$vectorSearch`, `$rankFusion` | `mongodb/mongodb-atlas-local:8.2.6` |
 
-### Singleton Pattern (NUnit)
+### Singleton Container Patterns (choose one)
+
+#### NUnit
 
 ```csharp
 // Container lives for the entire test run
@@ -191,7 +216,7 @@ public async Task BeforeEach()
 - `DropDatabaseAsync()` is fast enough for per-test isolation (faster than container restart).
 - No `[TearDown]` or `DisposeAsync` needed — container lives for the process lifetime.
 
-### xUnit Fixture Pattern
+#### xUnit.net
 
 xUnit uses `IAsyncLifetime` with `IClassFixture<T>` or `ICollectionFixture<T>`:
 
@@ -301,7 +326,7 @@ public sealed class AtlasLocalFixture : IAsyncLifetime
 }
 ```
 
-### SearchTestBase Pattern (Atlas Search)
+### SearchTestBase Pattern (Atlas Search, selected framework lifecycle)
 
 When testing Atlas Search, the lifecycle is more complex — search indexes are expensive to create and eventually consistent:
 
@@ -327,7 +352,7 @@ public abstract class SearchTestBase
         return container;
     }
 
-    [SetUp]
+    // NUnit: use [SetUp] on this method.
     public virtual async Task SetUp()
     {
         // Per-test: clear data, NOT drop database (preserves search indexes)
@@ -335,6 +360,11 @@ public abstract class SearchTestBase
     }
 }
 ```
+
+For xUnit.net, implement `IAsyncLifetime` on the base class instead of using `[SetUp]`; call the
+same `ClearTestDataAsync()` from `InitializeAsync()` and return `ValueTask.CompletedTask` from
+`DisposeAsync()` when no cleanup is required. Keep the container and search indexes in the shared
+singleton, and use the selected framework's test declaration.
 
 Key pattern:
 1. **`Lazy<Task<T>>`** — async singleton; container + index creation runs exactly once.
@@ -847,8 +877,13 @@ Rules:
 
 ### Coverage Guard Test
 
+Use the same test body with exactly one framework marker: `[Test]` for NUnit or `[Fact]` for
+xUnit.net.
+
+Use the matching assertion as well: NUnit uses `Assert.That(sampleTypes, Is.EquivalentTo(allTypes))`;
+xUnit.net uses `Assert.True(sampleTypes.SetEquals(allTypes))`.
+
 ```csharp
-[Test]
 public void AllImplementationsHaveCorrespondingSamples()
 {
     var allTypes = typeof(TBase).Assembly.GetTypes()
@@ -858,7 +893,7 @@ public void AllImplementationsHaveCorrespondingSamples()
 
     var sampleTypes = SampleFactory.CreateAll().Keys.ToHashSet();
 
-    Assert.That(sampleTypes, Is.EquivalentTo(allTypes));
+    // Add the selected framework's assertion described above.
 }
 ```
 
@@ -867,8 +902,10 @@ public void AllImplementationsHaveCorrespondingSamples()
 
 ### Snapshot Shape Test
 
+Use `[Test]` for NUnit or `[Fact]` for xUnit.net. `Verifier.Verify(items)` is shared by both Verify
+adapters after the selected framework package is installed.
+
 ```csharp
-[Test]
 public async Task XxxAggregateSerializationShape()
 {
     var items = SampleFactory.CreateAll()
@@ -895,8 +932,8 @@ Pattern:
 |---|---|
 | **Container (standard)** | `new MongoDbBuilder("mongo:8.0").WithReplicaSet().Build()` |
 | **Container (Atlas Local, no-auth)** | `new MongoDbBuilder("mongodb/mongodb-atlas-local:8.2.6").WithUsername(null).WithPassword(null).WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy()).Build()` |
-| **Isolation (standard)** | `DropDatabaseAsync()` in `[SetUp]` |
-| **Isolation (Atlas Search)** | `DeleteManyAsync(Filter.Empty)` + wait for index removal in `[SetUp]` |
+| **Isolation (standard)** | `DropDatabaseAsync()` in NUnit `[SetUp]` or xUnit `IAsyncLifetime.InitializeAsync()` |
+| **Isolation (Atlas Search)** | `DeleteManyAsync(Filter.Empty)` + wait for index removal in the selected per-test lifecycle |
 | **Get collection** | `server.GetRequiredService<DbContext>().GetCollection<TDto>()` |
 | **Filter** | `Builders<T>.Filter.Eq(x => x.Id, id)` |
 | **Update** | `Builders<T>.Update.Set(x => x.Name, name)` |
@@ -916,22 +953,24 @@ Pattern:
 
 ## Best Practices
 
-1. **Singleton container** — one per test run, `Lazy<T>` (NUnit) or `ICollectionFixture<T>` (xUnit), never per-test.
-2. **Drop database, not container** — `DropDatabaseAsync()` is faster than container restart.
-3. **Pin MongoDB image version** — avoid surprise failures from image updates.
-4. **Pass image in constructor** — `new MongoDbBuilder("mongo:8.0")` — parameterless constructor is deprecated since Testcontainers 4.10.0.
-5. **Enable ReplicaSet** — even if not using transactions now, prevents future migration pain.
-6. **Strongly-typed everything** — no magic strings in filters, updates, or projections.
-7. **Typed DTOs over BsonDocument** — for insert and query operations in tests.
-8. **Deterministic test data** — fixed IDs, fixed dates, no random values.
-9. **Sample factory coverage guard** — reflection test to catch missing samples automatically.
-10. **Namespace-grouped snapshots** — one snapshot test per aggregate/module for manageable diffs.
-11. **Use Atlas Local for search tests** — `mongodb/mongodb-atlas-local:8.2.6` supports `$search` and `$vectorSearch`.
-12. **Never `DropDatabaseAsync` with search indexes** — use `DeleteManyAsync` + wait for index removal instead.
-13. **Create search indexes once per test run** — indexes are expensive; share via singleton container / fixture.
-14. **Always wait for search indexing** — Atlas Search is eventually consistent; poll with `$search` after insert.
-15. **Wait for nested fields separately** — `EmbeddedDocument` fields index independently; verify with actual query filters.
-16. **Atlas Local auth mode** — use no-auth for simple tests; use auth mode (`MONGODB_INITDB_ROOT_USERNAME/PASSWORD`) when mirroring Aspire dev resource configuration.
+1. **Choose the framework first** — preserve an existing convention or ask the user to choose NUnit
+   or xUnit before scaffolding; never infer NUnit from the examples.
+2. **Singleton container** — one per test run, `Lazy<T>` (NUnit) or `ICollectionFixture<T>` (xUnit), never per-test.
+3. **Drop database, not container** — `DropDatabaseAsync()` is faster than container restart.
+4. **Pin MongoDB image version** — avoid surprise failures from image updates.
+5. **Pass image in constructor** — `new MongoDbBuilder("mongo:8.0")` — parameterless constructor is deprecated since Testcontainers 4.10.0.
+6. **Enable ReplicaSet** — even if not using transactions now, prevents future migration pain.
+7. **Strongly-typed everything** — no magic strings in filters, updates, or projections.
+8. **Typed DTOs over BsonDocument** — for insert and query operations in tests.
+9. **Deterministic test data** — fixed IDs, fixed dates, no random values.
+10. **Sample factory coverage guard** — reflection test to catch missing samples automatically.
+11. **Namespace-grouped snapshots** — one snapshot test per aggregate/module for manageable diffs.
+12. **Use Atlas Local for search tests** — `mongodb/mongodb-atlas-local:8.2.6` supports `$search` and `$vectorSearch`.
+13. **Never `DropDatabaseAsync` with search indexes** — use `DeleteManyAsync` + wait for index removal instead.
+14. **Create search indexes once per test run** — indexes are expensive; share via singleton container / fixture.
+15. **Always wait for search indexing** — Atlas Search is eventually consistent; poll with `$search` after insert.
+16. **Wait for nested fields separately** — `EmbeddedDocument` fields index independently; verify with actual query filters.
+17. **Atlas Local auth mode** — use no-auth for simple tests; use auth mode (`MONGODB_INITDB_ROOT_USERNAME/PASSWORD`) when mirroring Aspire dev resource configuration.
 
 ## Additional Resources
 

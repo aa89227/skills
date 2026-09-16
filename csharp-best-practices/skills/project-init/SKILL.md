@@ -6,15 +6,17 @@ description: |
   Directory.Build.props, Directory.Build.targets, Directory.Packages.props / Central Package
   Management, nuget.config, .editorconfig, .gitignore, .gitattributes, dotnet-tools.json),
   and laying out the folder structure (src/ + tests/
-  vs flat). Also asks whether the solution uses Aspire and, if so, installs the Aspire CLI
-  as a local dotnet tool and documents its usage in the README.
+  vs flat). Also asks which test framework to use (NUnit or xUnit), whether the solution uses
+  Aspire, and, if so, installs the Aspire CLI as a local dotnet tool and documents its usage in
+  the README.
   Trigger phrases: "init project", "new solution", "scaffold solution", "set up repo",
   "專案初始化", "建立方案", "開新專案", "資料夾結構", "slnx", "Directory.Build.props",
-  "central package management", "global.json", "aspire", "aspire cli".
+  "central package management", "global.json", "aspire", "aspire cli", "test framework",
+  "NUnit", "xUnit".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
   tags: ["csharp", "dotnet", "project-init", "scaffolding", "msbuild", "dotnet10"]
   trigger_keywords: ["init", "solution", "slnx", "scaffold", "Directory.Build.props", "Directory.Packages.props", "global.json", "central package management", "aspire", "專案初始化", "資料夾結構"]
 ---
@@ -39,6 +41,18 @@ instructions (for example after context compaction or a new session), the instru
 ambiguous or conflicting, or exact wording must be verified.
 
 **Requires:** .NET 10 SDK (`dotnet --version` ≥ `10.0.100`). The `.slnx` format and `dotnet new buildprops`/`buildtargets` are assumed available.
+
+## Test Framework Selection
+
+Before scaffolding a test project:
+
+1. Inspect the repository for an existing NUnit or xUnit convention and preserve it for related
+   projects. Do not silently migrate an existing test suite.
+2. For a new project with no established convention, ask the user to choose **NUnit or xUnit**
+   before creating the test project or installing its packages.
+3. Use the selected template (`nunit` or `xunit`) and matching framework packages consistently.
+   Never use `nunit` as an implicit default, and never choose based on the order of this document's
+   examples.
 
 ## Config Quick Reference
 
@@ -123,9 +137,14 @@ dotnet new tool-manifest    # .config/dotnet-tools.json
 #    as a local tool, then `aspire init` (existing dir) or `aspire new`.
 #    If NO  → continue below.
 
+# ── ASK the user: NUnit or xUnit? ─────────────────────────────────────────
+#    If an existing repository convention exists, preserve it; otherwise wait
+#    for the user's choice before creating the test project.
+
 # 8) Create projects and add them to the solution (src / tests split)
 dotnet new classlib -o src/MyApp.Core
-dotnet new nunit    -o tests/MyApp.Core.Tests
+#    Replace <selected-test-template> with `nunit` or `xunit` from the user's choice.
+dotnet new <selected-test-template> -o tests/MyApp.Core.Tests
 dotnet sln add src/MyApp.Core tests/MyApp.Core.Tests
 
 # 9) Verify
@@ -422,6 +441,7 @@ Commit the manifest so the whole team uses the same tool versions.
 7. **`props` vs `targets`**: shared properties → `Directory.Build.props`; shared targets / late items → `Directory.Build.targets`.
 8. **Commit the tool manifest**; contributors run `dotnet tool restore`.
 9. **Ask about Aspire** before scaffolding — never assume. If the solution uses it, install `aspire.cli` as a local tool, run `aspire init` / `aspire new`, and document usage in the README.
+10. **Ask about the test framework** before scaffolding tests when no repository convention exists — choose NUnit or xUnit explicitly and use the matching template and packages.
 
 ## Cheat Sheet
 
@@ -435,6 +455,7 @@ Commit the manifest so the whole team uses the same tool versions.
 | One-off version | `VersionOverride` only for an explicit compatibility pin, using a feed-resolved version |
 | Line endings | `.gitattributes` `* text=auto eol=lf` |
 | Folder layout | `src/` + `tests/` (default) or flat for single project |
+| Test framework | Ask first: `nunit` or `xunit`; preserve an existing convention |
 | Aspire | ASK first; if yes: `dotnet tool install aspire.cli` → `aspire init`, document in README |
 
 ## Notes

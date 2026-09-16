@@ -5,6 +5,7 @@ framework, or diagnosing a solution that contains more than one test framework.
 
 ## Contents
 
+- [Select the Test Framework First](#select-the-test-framework-first)
 - [Separate the layers](#separate-the-layers)
 - [Choose native or compatibility mode](#choose-native-or-compatibility-mode)
 - [Select a framework runner](#select-a-framework-runner)
@@ -12,6 +13,15 @@ framework, or diagnosing a solution that contains more than one test framework.
 - [Migration checklist](#migration-checklist)
 - [Common setup failures](#common-setup-failures)
 - [Official references](#official-references)
+
+## Select the Test Framework First
+
+MTP supplies the platform and runner integration; it does not decide whether the project uses
+NUnit or xUnit.net. Inspect the target project first. If it is new, has no established convention,
+and the request allows either framework, ask the user to choose **NUnit or xUnit** before adding
+packages or runner properties. Follow an explicit MSTest/TUnit choice when the task or repository
+already requires it. The framework-specific sections and companion projects below are alternatives,
+not a default order; do not select NUnit merely because it appears first.
 
 ## Separate the layers
 
