@@ -28,6 +28,14 @@
       "author": {
         "name": "aa89227"
       }
+    },
+    {
+      "name": "design-system",
+      "source": "./design-system",
+      "description": "Design System governance and delivery workflows for multi-framework component systems.",
+      "author": {
+        "name": "aa89227"
+      }
     }
   ]
 }

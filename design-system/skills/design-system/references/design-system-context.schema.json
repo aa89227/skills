@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-system-context.schema.json",
+  "title": "Design System Context",
+  "description": "Read-only preflight context used to route Design System work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "task", "catalog", "host", "decision"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetRoot", "role", "confidence", "hosts", "evidence", "allowedArtifacts"],
+      "properties": {
+        "targetRoot": { "type": "string", "minLength": 1 },
+        "role": {
+          "enum": ["skill-catalog", "design-system", "consumer", "showcase", "conformance", "unknown"]
+        },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "designSystemId": { "type": ["string", "null"] },
+        "hosts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["react", "blazor"] }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowedArtifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["design", "build", "consume", "conformance", "release"]
+        },
+        "componentQuery": { "type": ["string", "null"] }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "provider"],
+      "properties": {
+        "status": {
+          "enum": ["not-requested", "not-found", "ambiguous", "found", "component-not-found", "invalid"]
+        },
+        "provider": { "type": ["string", "null"] },
+        "manifest": { "type": ["string", "null"] },
+        "systemId": { "type": ["string", "null"] },
+        "displayName": { "type": ["string", "null"] },
+        "installedRelease": { "type": ["string", "null"] },
+        "contractVersion": { "type": ["string", "null"] },
+        "hosts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["react", "blazor"] }
+        },
+        "packages": { "type": ["object", "null"] },
+        "styles": { "type": ["object", "null"] },
+        "documentation": { "type": ["string", "null"] },
+        "conformance": { "type": ["object", "null"] },
+        "componentCount": { "type": ["integer", "null"], "minimum": 0 },
+        "component": { "type": ["object", "null"] },
+        "candidates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "latest": { "type": ["object", "null"] },
+        "updateStatus": {
+          "enum": ["unknown", "current", "candidate-available", "not-found", "ambiguous", "different-system"]
+        },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "requested", "selected"],
+      "properties": {
+        "status": { "enum": ["not-requested", "selected", "ambiguous", "unsupported"] },
+        "requested": { "type": ["string", "null"] },
+        "selected": { "type": ["string", "null"] }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "canProceed", "reason", "requiredChanges", "resumeCondition"],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "resolved-in-consumer",
+            "consumer-local-extension",
+            "blocked-on-context",
+            "blocked-on-catalog",
+            "blocked-on-token-change",
+            "blocked-on-component-contract",
+            "blocked-on-package-upgrade",
+            "blocked-on-host-support",
+            "conformance-required",
+            "skill-catalog-task",
+            "design-system-task",
+            "showcase-task",
+            "release-task"
+          ]
+        },
+        "canProceed": { "type": "boolean" },
+        "reason": { "type": "string", "minLength": 1 },
+        "requiredChanges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "resumeCondition": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

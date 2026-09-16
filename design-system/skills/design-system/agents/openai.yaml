@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design System"
+  short_description: "Route Design System work safely"
+  default_prompt: "Use $design-system to turn a visual and interaction need into a Design System change."

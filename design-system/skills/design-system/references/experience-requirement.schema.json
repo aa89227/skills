@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "experience-requirement.schema.json",
+  "title": "Design System Experience Requirement",
+  "description": "A non-technical visual and interaction brief before internal translation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["experience", "visual", "interaction", "states"],
+  "properties": {
+    "experience": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the person needs to accomplish and when this experience appears."
+    },
+    "visual": {
+      "$ref": "#/$defs/description",
+      "description": "Plain-language appearance and visual references."
+    },
+    "interaction": {
+      "$ref": "#/$defs/description",
+      "description": "Plain-language actions, transitions, and completion/dismissal behavior."
+    },
+    "states": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/state" }
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "openQuestions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "visual", "interaction"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "visual": { "type": "string", "minLength": 1 },
+        "interaction": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

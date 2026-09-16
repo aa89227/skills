@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-system-project-context.schema.json",
+  "title": "Design System Project Context",
+  "description": "Declares the role and Design System ownership of a repository.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "skill-catalog",
+        "design-system",
+        "consumer",
+        "showcase",
+        "conformance"
+      ]
+    },
+    "designSystemId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hosts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["react", "blazor"]
+      }
+    },
+    "sourceOfTruth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tokens": { "type": "string", "minLength": 1 },
+        "specifications": { "type": "string", "minLength": 1 },
+        "styles": { "type": "string", "minLength": 1 },
+        "conformance": { "type": "string", "minLength": 1 }
+      },
+      "minProperties": 1
+    },
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "react": { "type": "string", "minLength": 1 },
+        "blazor": { "type": "string", "minLength": 1 }
+      },
+      "minProperties": 1
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest": { "type": "string", "minLength": 1 },
+        "latestManifest": { "type": "string", "minLength": 1 },
+        "registry": { "type": "string", "minLength": 1 },
+        "approvedVersion": { "type": "string", "minLength": 1 }
+      },
+      "minProperties": 1
+    },
+    "provides": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": ["role"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": { "const": "design-system" }
+        }
+      },
+      "then": {
+        "required": ["designSystemId", "hosts", "sourceOfTruth"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "role": { "const": "consumer" }
+        }
+      },
+      "then": {
+        "required": ["designSystemId", "hosts", "packages"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "role": { "const": "skill-catalog" }
+        }
+      },
+      "then": {
+        "required": ["provides"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "enum": ["showcase", "conformance"]
+          }
+        }
+      },
+      "then": {
+        "required": ["designSystemId", "hosts"]
+      }
+    }
+  ]
+}

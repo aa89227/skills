@@ -27,6 +27,16 @@ Git workflow skill plugins:
 - Commit message conventions
 - Git worktree usage guide
 
+### 🔷 Design System
+**Location:** `design-system/`
+
+Design System workflow skills for:
+- Turning non-technical visual and interaction needs into internal Design System specifications
+- Resolving Skill Catalog, Design System, and consumer project context
+- Designing and evolving tokens and component contracts
+- Routing React / Blazor implementation and conformance work
+- Managing consumer change proposals and cross-project handoffs
+
 ## Installation
 
 1. Clone this repository to your local machine

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conformance-scenarios.schema.json",
+  "title": "Design System Conformance Scenarios",
+  "description": "Host-neutral scenarios executed by React and Blazor test adapters.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "componentId", "scenarios"],
+  "properties": {
+    "schemaVersion": { "type": "string", "minLength": 1 },
+    "componentId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "intent", "priority", "hosts", "given", "when", "then"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)+$"
+        },
+        "intent": { "type": "string", "minLength": 1 },
+        "priority": { "enum": ["release-blocking", "required", "informative"] },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["react", "blazor"] }
+        },
+        "given": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "when": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "then": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "assertions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "accessibility": { "$ref": "#/$defs/assertionList" },
+            "domCss": { "$ref": "#/$defs/assertionList" },
+            "timing": { "$ref": "#/$defs/assertionList" },
+            "visual": { "$ref": "#/$defs/assertionList" }
+          },
+          "minProperties": 1
+        },
+        "deviations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deviation" }
+        }
+      }
+    },
+    "assertionList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "deviation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "reason", "owner", "removalCondition"],
+      "properties": {
+        "host": { "enum": ["react", "blazor"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "affectedVersions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "removalCondition": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

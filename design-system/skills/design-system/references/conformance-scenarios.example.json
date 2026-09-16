@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1",
+  "componentId": "dialog",
+  "scenarios": [
+    {
+      "id": "dialog.open.escape",
+      "intent": "A modal dialog can be dismissed with the keyboard.",
+      "priority": "release-blocking",
+      "hosts": ["react", "blazor"],
+      "given": [
+        "the dialog is open and the active element is inside it"
+      ],
+      "when": [
+        "the user presses Escape"
+      ],
+      "then": [
+        "the dialog closes",
+        "the overlay and modal state are no longer exposed"
+      ],
+      "assertions": {
+        "accessibility": [
+          "the closed dialog is not in the accessibility tree"
+        ],
+        "timing": [
+          "the close event occurs at the contract-defined close boundary"
+        ]
+      }
+    },
+    {
+      "id": "dialog.close.focus-restoration",
+      "intent": "Closing a dialog returns the user to the control that opened it.",
+      "priority": "release-blocking",
+      "hosts": ["react", "blazor"],
+      "given": [
+        "a connected trigger button opened the dialog"
+      ],
+      "when": [
+        "the user closes the dialog"
+      ],
+      "then": [
+        "focus is restored to the trigger button",
+        "if the trigger is disconnected, focus follows the documented fallback"
+      ],
+      "assertions": {
+        "accessibility": [
+          "focus is not left on a disconnected or hidden node"
+        ]
+      }
+    }
+  ]
+}

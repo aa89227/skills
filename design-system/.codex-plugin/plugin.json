@@ -1,0 +1,39 @@
+{
+  "name": "design-system",
+  "version": "0.3.0",
+  "description": "Design System governance and delivery workflows for multi-framework component systems.",
+  "author": {
+    "name": "aa89227",
+    "email": "aa89227@gmail.com",
+    "url": "https://github.com/aa89227"
+  },
+  "license": "MIT",
+  "keywords": [
+    "design-system",
+    "design-tokens",
+    "react",
+    "blazor",
+    "accessibility",
+    "components"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Design System",
+    "shortDescription": "Turn visual and interaction needs into multi-framework Design System changes.",
+    "longDescription": "Routes Design System work by project role and task mode, keeping tokens, component contracts, framework implementations, conformance, and consumer changes in their correct ownership boundaries.",
+    "developerName": "aa89227",
+    "category": "Development",
+    "capabilities": [
+      "Resolve Design System and consumer project context",
+      "Turn non-technical visual and interaction needs into Design System changes",
+      "Design and evolve tokens and component contracts",
+      "Route React and Blazor implementation work",
+      "Coordinate cross-framework conformance and consumer handoffs"
+    ],
+    "defaultPrompt": [
+      "Use $design-system to describe a Design System need through its visual and interaction experience.",
+      "Use $design-system to design a component contract for React and Blazor.",
+      "Use $design-system to determine whether this project consumes or owns the Design System."
+    ]
+  }
+}

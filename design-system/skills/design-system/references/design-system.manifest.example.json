@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1",
+  "systemId": "company",
+  "displayName": "Company Design System",
+  "releaseVersion": "4.2.0",
+  "contractVersion": "3",
+  "contractFingerprint": "sha256:example-contract-fingerprint",
+  "hosts": ["react", "blazor"],
+  "packages": {
+    "react": {
+      "name": "@company/design-system-react",
+      "version": "4.2.0"
+    },
+    "blazor": {
+      "name": "Company.DesignSystem.Blazor",
+      "version": "4.2.0"
+    },
+    "styles": {
+      "name": "@company/design-system-css",
+      "version": "4.2.0"
+    },
+    "contracts": {
+      "name": "@company/design-system-contracts",
+      "version": "4.2.0"
+    }
+  },
+  "styles": {
+    "package": "@company/design-system-css",
+    "entrypoint": "dist/design-system.css",
+    "themeEntrypoints": {
+      "light": "dist/themes/light.css",
+      "dark": "dist/themes/dark.css"
+    }
+  },
+  "conformance": {
+    "scenarioSource": "conformance/scenarios",
+    "report": "conformance/reports/4.2.0"
+  },
+  "documentation": "https://design-system.company.invalid/4.2.0",
+  "components": [
+    {
+      "id": "button",
+      "displayName": "Button",
+      "status": "stable",
+      "contract": "components/button/contract.json",
+      "docs": "components/button",
+      "hostApis": {
+        "react": {
+          "package": "@company/design-system-react",
+          "export": "Button",
+          "usage": "examples/button.react.tsx"
+        },
+        "blazor": {
+          "package": "Company.DesignSystem.Blazor",
+          "type": "Button",
+          "usage": "examples/Button.razor"
+        }
+      },
+      "examples": {
+        "react": "examples/button.react.tsx",
+        "blazor": "examples/Button.razor"
+      }
+    },
+    {
+      "id": "dialog",
+      "displayName": "Dialog",
+      "status": "stable",
+      "aliases": ["Modal"],
+      "contract": "components/dialog/contract.json",
+      "docs": "components/dialog",
+      "hostApis": {
+        "react": {
+          "package": "@company/design-system-react",
+          "export": "Dialog",
+          "usage": "examples/dialog.react.tsx"
+        },
+        "blazor": {
+          "package": "Company.DesignSystem.Blazor",
+          "type": "Dialog",
+          "usage": "examples/Dialog.razor"
+        }
+      },
+      "scenarios": [
+        "dialog.open.escape",
+        "dialog.open.overlay-dismiss",
+        "dialog.open.focus-entry",
+        "dialog.open.focus-containment",
+        "dialog.close.focus-restoration"
+      ],
+      "examples": {
+        "react": "examples/dialog.react.tsx",
+        "blazor": "examples/Dialog.razor"
+      }
+    }
+  ],
+  "compatibility": {
+    "minimumReact": "4.0.0",
+    "minimumBlazor": "4.0.0",
+    "minimumContract": "3"
+  }
+}

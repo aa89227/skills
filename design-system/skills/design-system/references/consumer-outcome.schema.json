@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "consumer-outcome.schema.json",
+  "title": "Design System Consumer Outcome",
+  "description": "Structured result for a consumer request involving a Design System gap.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "canProceed", "reason", "requiredChanges", "resumeCondition"],
+  "properties": {
+    "outcome": {
+      "enum": [
+        "resolved-in-consumer",
+        "consumer-local-extension",
+        "blocked-on-context",
+        "blocked-on-catalog",
+        "blocked-on-token-change",
+        "blocked-on-component-contract",
+        "blocked-on-package-upgrade",
+        "blocked-on-host-support",
+        "conformance-required",
+        "skill-catalog-task"
+      ]
+    },
+    "canProceed": { "type": "boolean" },
+    "reason": { "type": "string", "minLength": 1 },
+    "requiredChanges": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "affectedHosts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["react", "blazor"] }
+    },
+    "sourceProject": { "type": ["string", "null"] },
+    "targetDesignSystemProject": { "type": ["string", "null"] },
+    "installedRelease": { "type": ["string", "null"] },
+    "requiredContractVersion": { "type": ["string", "null"] },
+    "resumeCondition": { "type": ["string", "null"] }
+  }
+}
