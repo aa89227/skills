@@ -14,7 +14,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["csharp", "dotnet", "testing", "microsoft-testing-platform", "mtp", "test-runner", "ci"]
   trigger_keywords: ["Microsoft Testing Platform", "MTP", "Microsoft.Testing.Platform", "MSTest.Sdk", "EnableMSTestRunner", "EnableNUnitRunner", "UseMicrosoftTestingPlatformRunner", "testconfig.json", "MTP migration"]
 ---
@@ -29,6 +29,16 @@ follow its instructions without rereading the file on every turn or before every
 Reread it only when the file may have changed, the current context no longer contains its
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
+
+## Package Installation
+
+When adding a test runner or MTP extension, resolve the latest stable compatible release from the
+online NuGet feed at task time. Use `dotnet package add <PackageId> --project <project>` on .NET
+10+, or `dotnet add <project> package <PackageId>` on older SDKs, without `--version`. Do not copy
+a package version from this skill, its examples, an old VSTest project, or memory, and do not
+hand-edit a `PackageReference`; let the package tooling update the project or central package
+file. If the runner and extensions require aligned major versions, query the current releases for
+the whole set and verify restore/build before proceeding.
 
 Use MTP as a test platform, not as a replacement for a test framework. The framework (MSTest,
 NUnit, xUnit.net, or TUnit) owns test attributes and assertions; MTP owns the test application,
@@ -131,9 +141,9 @@ dotnet run --project tests/UnitTests -- --info
   MTP core configuration format.
 - Do not invent a `Main` method when `GenerateTestingPlatformEntryPoint` is enabled. A second
   entry point is a common cause of MTP build errors.
-- Align the MTP major version across the framework runner and extensions. Do not copy a package
-  version from an old VSTest example without checking the current framework and extension
-  compatibility notes.
+- Align the MTP major version across the framework runner and extensions. Resolve the latest
+  compatible versions online as a set; do not copy a package version from an old VSTest example,
+  this skill, or memory without checking the current framework and extension compatibility notes.
 - Do not hide a zero-test result with `--ignore-exit-code 8` unless the project intentionally
   allows an empty module; first check module selection, target framework, discovery, and filters.
 - Treat retry as a diagnostic or transient-infrastructure aid, not as a way to make deterministic

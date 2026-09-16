@@ -10,7 +10,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["testing", "api", "verify", "snapshot", "integration-test", "nunit", "xunit"]
 ---
 
@@ -28,6 +28,15 @@ ambiguous or conflicting, or exact wording must be verified.
 **Frameworks:** NUnit 4.x + Verify.NUnit **or** xUnit v3 + Verify.XunitV3, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
 
 > **xUnit v2 note:** Replace `ValueTask` with `Task` and `[Collection<T>]` with `[Collection("name")]`.
+
+## Package Installation
+
+When introducing a test dependency, resolve the latest stable release from the online NuGet feed at
+task time. Add it with the package CLI without `--version`—for example,
+`dotnet package add Verify.NUnit --project <path-to-test-project>` on .NET 10+, or
+`dotnet add <path-to-test-project> package Verify.NUnit` on older SDKs. Do not copy a version from
+this skill, an example, or memory, and do not hand-edit a `PackageReference`; let the CLI/package
+manager record the version it resolved in the project or central package file.
 
 ## General Rules
 

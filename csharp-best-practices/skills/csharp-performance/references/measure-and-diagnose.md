@@ -18,7 +18,9 @@ iterations, statistical analysis, and protects against dead-code elimination —
 hand-rolled `Stopwatch` code gets wrong.
 
 ```csharp
-// dotnet add package BenchmarkDotNet
+// First resolve the latest stable package online with the CLI (no --version):
+// dotnet package add BenchmarkDotNet --project <path-to-benchmark-project>
+// .NET 9 and earlier: dotnet add <path-to-benchmark-project> package BenchmarkDotNet
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 
@@ -97,8 +99,15 @@ with `Stopwatch.GetElapsedTime(start)` is fine — but consume the result (log i
 <a name="whole-app"></a>
 ## Whole-app diagnostics: counters & traces
 
-For production or whole-application analysis, micro-benchmarks don't help. Use the dotnet
-diagnostic tools (`dotnet tool install -g dotnet-counters dotnet-trace`):
+For production or whole-application analysis, micro-benchmarks don't help. Install the latest
+stable diagnostic tools from the online feed without a version option (one tool per command):
+
+```bash
+dotnet tool install -g dotnet-counters
+dotnet tool install -g dotnet-trace
+```
+
+Then use the tools:
 
 ```bash
 # Live counters — GC, heap, threadpool, exceptions, lock contention

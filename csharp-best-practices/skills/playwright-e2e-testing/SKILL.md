@@ -10,7 +10,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
+  version: "2.1"
   tags: ["testing", "playwright", "aspire", "e2e", "xunit", "visual-regression"]
 ---
 
@@ -56,6 +56,29 @@ xUnit Test Class ([Collection] + primary constructor)
 <ProjectReference Include="..\..\MyApp.AppHost\MyApp.AppHost.csproj" />
 ```
 
+## Dependency Installation
+
+The project setup block lists package IDs without versions intentionally. When introducing these
+dependencies, resolve the latest stable releases from the online feeds at task time and use the
+package CLI without `--version`:
+
+```bash
+# .NET 10+
+dotnet package add Aspire.Hosting.Testing --project <path-to-test-project>
+dotnet package add Microsoft.Playwright --project <path-to-test-project>
+dotnet package add Testcontainers --project <path-to-test-project>
+dotnet package add xunit.v3 --project <path-to-test-project>
+
+# .NET 9 and earlier: use `dotnet add <project> package <PackageId>` instead
+```
+
+Do not hand-edit a `.csproj`, add `--no-restore` to the initial package command, or copy a package
+version from this skill, a sample, or memory. Let
+the CLI/package manager write the resolved versions to the project or central package file. The
+Playwright package, Docker image, and `npx playwright` client must use one exact compatible version:
+resolve the current `Microsoft.Playwright` version first, then apply that same resolved version to
+the image/client rather than copying the version in an old example.
+
 ## AspireFixture
 
 Shared fixture that starts the entire Aspire stack and Playwright browser. Shared across all test classes in the collection via `ICollectionFixture`.
@@ -98,9 +121,11 @@ public sealed class AspireFixture : IAsyncLifetime
 
         // 3. Start Playwright browser in Docker container
         const int serverPort = 8080;
-        _browserContainer = new ContainerBuilder("mcr.microsoft.com/playwright:v1.60.0-noble")
+        // Set this from the version resolved for Microsoft.Playwright by the package CLI.
+        const string playwrightVersion = "<resolved-Microsoft.Playwright-version>";
+        _browserContainer = new ContainerBuilder($"mcr.microsoft.com/playwright:v{playwrightVersion}-noble")
             .WithEntrypoint("/bin/sh", "-c")
-            .WithCommand($"npx -y playwright@1.60.0 run-server --port {serverPort} --host 0.0.0.0")
+            .WithCommand($"npx -y playwright@{playwrightVersion} run-server --port {serverPort} --host 0.0.0.0")
             .WithPortBinding(serverPort, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Listening on"))
             .Build();
@@ -161,7 +186,9 @@ Why:
 - Screenshot baselines are portable across developer machines.
 
 Rules:
-- **Version alignment is mandatory**: NuGet `Microsoft.Playwright` version must match the Docker image tag and `npx playwright@` version exactly.
+- **Resolve first, align exactly**: resolve the latest stable NuGet `Microsoft.Playwright` release
+  online before adding it, then use that same resolved version for the Docker image tag and
+  `npx playwright@` client. Never copy a version from this document.
 - `run-server` binds to `[::1]` by default — must add `--host 0.0.0.0` for host-to-container access.
 
 ### Aspire parameter injection timing
@@ -428,7 +455,9 @@ Use `Assertions.Expect()` (Playwright static method), not xUnit `Assert` — Pla
 
 ## Rules
 
-1. **Version alignment** — `Microsoft.Playwright` NuGet, Docker image tag, and `npx playwright@` must be the same version.
+1. **Latest version alignment** — resolve the latest stable `Microsoft.Playwright` version online
+   when introducing the dependency; the NuGet package, Docker image tag, and `npx playwright@`
+   client must then use that same exact version.
 2. **Docker run-server** — always run browser in container for rendering consistency; never use local browser for E2E.
 3. **`--host 0.0.0.0`** — required for `run-server`; without it the WebSocket binds to loopback only.
 4. **`ExposeHostPortsAsync` + `host.testcontainers.internal`** — use Testcontainers' cross-engine API for container→host connectivity; do not use Docker-specific `host.docker.internal`.

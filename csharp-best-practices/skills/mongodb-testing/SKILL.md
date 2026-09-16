@@ -3,7 +3,8 @@ name: mongodb-testing
 description: |
   MongoDB integration testing patterns with Testcontainers and strongly-typed operations.
   Use when writing or reviewing MongoDB integration tests that use Testcontainers, strongly-typed
-  Builders<T> for test data preparation, and Verify snapshot testing for BSON serialization shapes.
+  strongly-typed Builders APIs for test data preparation, and Verify snapshot testing for BSON
+  serialization shapes.
   Includes Atlas Local container for Atlas Search / Vector Search testing, search index definition
   builder, index lifecycle management, and eventual consistency wait patterns.
   Complements the mongodb-strongly-typed skill with testing-specific patterns.
@@ -14,9 +15,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "3.0"
-  testcontainers-version: "4.12.0"
-  driver-version: "3.9.0"
+  version: "3.1"
   tags: ["testing", "mongodb", "testcontainers", "bson", "integration-test", "verify", "atlas-local", "atlas-search"]
 ---
 
@@ -31,9 +30,28 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Frameworks:** NUnit 4.x, xUnit 2.x, Testcontainers.MongoDb 4.12.0, MongoDB.Driver 3.9.0, Verify.NUnit / Verify.Xunit
+**Frameworks:** NUnit 4.x, xUnit 2.x, Testcontainers.MongoDb 4.x, MongoDB.Driver 3.x, Verify.NUnit / Verify.Xunit
 
 Complements the **`mongodb-strongly-typed`** skill — this skill covers the **testing** side.
+
+## Package Installation
+
+When adding a test dependency, resolve the latest stable release from the online NuGet feed at
+task time. Use the package CLI without `--version`, for example:
+
+```bash
+# .NET 10+
+dotnet package add Testcontainers.MongoDb --project <path-to-test-project>
+dotnet package add MongoDB.Driver --project <path-to-test-project>
+
+# .NET 9 and earlier: use `dotnet add <project> package <PackageId>` instead
+```
+
+Do not copy `4.12.0`, `3.9.0`, or another version from this skill, a sample, or memory into a
+project file. Let the CLI/package manager update the project or central package file with the
+current resolved versions, then verify the complete package graph. The MongoDB image tags in the
+examples are intentionally pinned container-fixture versions for deterministic tests; they are
+not NuGet package versions.
 
 ## General Rules
 

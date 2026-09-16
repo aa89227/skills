@@ -11,8 +11,8 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
-  aspire-version: "13.4.2"
+  version: "2.1"
+  reference-baseline: "Aspire.Hosting 13.4.x"
   tags: ["aspire", "mongodb", "atlas-local", "container", "custom-resource", "atlas-search"]
 ---
 
@@ -28,7 +28,8 @@ instructions (for example after context compaction or a new session), the instru
 ambiguous or conflicting, or exact wording must be verified.
 
 > Custom Aspire resource for `mongodb/mongodb-atlas-local` — supports `$search` and `$vectorSearch` out of the box.
-> Aspire.Hosting 13.4.x compatible.
+> The examples use Aspire.Hosting 13.4.x API conventions as a reference baseline; resolve the
+> latest compatible package before adding Aspire dependencies.
 
 ## Quick Reference
 
@@ -42,6 +43,18 @@ ambiguous or conflicting, or exact wording must be verified.
 | Database connection | `{parent}/{dbName}?directConnection=true&authSource=admin` |
 | Aspire.Hosting | `13.4.x` |
 | Volume mounts | `/data/db`, `/data/configdb`, `/data/mongot` |
+
+## Package Installation
+
+When introducing Aspire or another NuGet dependency, resolve the latest stable compatible release
+from the online feed at task time. Use `dotnet package add <PackageId> --project <project>` on
+.NET 10+ or `dotnet add <project> package <PackageId>` on older SDKs, without `--version`; let the
+CLI/package manager update the project or central package file. Do not copy a version from this
+skill or memory into a `.csproj`. If the AppHost and integrations must align, query their current
+releases together and verify restore/build.
+
+The Atlas Local image tag shown below is intentionally pinned as a deterministic container fixture;
+it is separate from NuGet package version resolution.
 
 ## Core Rules
 

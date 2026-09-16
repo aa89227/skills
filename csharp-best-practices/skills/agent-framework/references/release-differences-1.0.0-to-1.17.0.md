@@ -3,7 +3,9 @@
 This is the temporary maintenance checklist used to update the repository's `agent-framework`
 skill. It covers every published .NET release note between the project's previous baseline and
 the current release. It is intentionally a condensed, actionable paraphrase rather than a copy
-of the upstream notes.
+of the upstream notes. It is a historical maintenance record, not a package-install guide. Do not
+use the release/version listed here as the current installation target; resolve the latest stable
+compatible package from the online NuGet feed when starting new work.
 
 ## Scope and baseline
 

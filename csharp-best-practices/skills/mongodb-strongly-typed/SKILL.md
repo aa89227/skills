@@ -4,7 +4,7 @@ description: MongoDB C# Driver strongly-typed patterns. Use when working with Mo
 license: MIT
 metadata:
   author: aa89227
-  version: "2.0"
+  version: "2.1"
   tags: ["mongodb", "csharp", "database", "strongly-typed"]
 ---
 
@@ -19,7 +19,16 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Driver version:** MongoDB.Driver 3.x (.NET 8+)
+**Driver compatibility:** MongoDB.Driver 3.x (.NET 8+). This is a compatibility range, not a
+version to type into a project file.
+
+## Package Installation
+
+When introducing `MongoDB.Driver`, resolve the latest stable release from the online NuGet feed at
+task time. Use `dotnet package add MongoDB.Driver --project <path-to-project>` on .NET 10+ or
+`dotnet add <path-to-project> package MongoDB.Driver` on older SDKs, without `--version`. Do not
+copy a version from this skill or another MongoDB example, and do not hand-edit a `PackageReference`;
+let the CLI/package manager record the version it resolved.
 
 ## General Rules
 

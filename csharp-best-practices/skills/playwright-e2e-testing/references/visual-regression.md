@@ -80,7 +80,10 @@ internal static class ScreenshotComparer
 }
 ```
 
-Requires NuGet packages: `SkiaSharp` + `SkiaSharp.NativeAssets.Linux` (for CI).
+Requires NuGet packages: `SkiaSharp` + `SkiaSharp.NativeAssets.Linux` (for CI). Resolve both from
+the online NuGet feed with `dotnet package add <PackageId> --project <project>` (or the older
+`dotnet add <project> package <PackageId>`) without `--version`; do not copy a version from an
+example or hand-edit the project file.
 
 ## SkiaSharp vs Playwright JS `toHaveScreenshot`
 

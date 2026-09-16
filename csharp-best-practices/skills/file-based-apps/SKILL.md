@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["csharp", "dotnet", "file-based-apps", "scripting", "dotnet10"]
   trigger_keywords: ["file-based", "#:package", "#:sdk", "#:property", "dotnet run", "shebang", "single-file"]
 ---
@@ -40,13 +40,30 @@ ambiguous or conflicting, or exact wording must be verified.
 **Default publish:** Native AOT enabled
 **Default pack:** `PackAsTool=true`
 
+## Package Version Resolution
+
+When introducing a package, resolve the latest stable release from the online NuGet feed at task
+time. Use `@*` for a file-based app package directive; never copy a remembered version from a
+sample or hand-edit a generated project file to insert one.
+
+```csharp
+#:package Package.Name@*
+```
+
+For project-based dependencies, use the package manager without a version option:
+`dotnet package add <PackageId> --project <project>` on .NET 10+, or
+`dotnet add <project> package <PackageId>` on older SDKs; do not pass `--version`. If a parent
+`Directory.Packages.props` supplies the version, let the package tooling update that file rather
+than guessing a value. A version written by the CLI after it resolves the feed may be committed
+according to the repository's lock/reproducibility policy.
+
 ## Supported Directives
 
 All `#:` directives must be placed at the **top** of the file, before any C# code.
 
 | Directive | Purpose | Example |
 |---|---|---|
-| `#:package` | Add NuGet package reference | `#:package Newtonsoft.Json@13.0.3` |
+| `#:package` | Add NuGet package reference | `#:package Newtonsoft.Json@*` |
 | `#:sdk` | Specify SDK (default: `Microsoft.NET.Sdk`) | `#:sdk Microsoft.NET.Sdk.Web` |
 | `#:property` | Set MSBuild property | `#:property TargetFramework=net10.0` |
 | `#:project` | Reference another project | `#:project ../Shared/Shared.csproj` |
@@ -95,6 +112,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.Build().Run();
 ```
 
+The explicit Aspire SDK version above is a project-SDK compatibility example, not a NuGet package
+installation target. Resolve the current SDK version from the official Aspire tooling/docs when
+using this pattern; do not infer it from the sample.
+
 ### With MSBuild properties
 
 ```csharp
@@ -117,7 +138,7 @@ Console.WriteLine("App starting...");
 
 ```csharp
 #!/usr/bin/env dotnet
-#:package Spectre.Console
+#:package Spectre.Console@*
 
 using Spectre.Console;
 
@@ -226,7 +247,7 @@ File-based apps respect these files from parent directories:
 | Topic | Rule |
 |---|---|
 | Directives placement | Top of file, before any C# code |
-| Package version | Specify explicitly (`@3.1.1`) or use `@*` for latest; omit only with central package management |
+| Package version | Use `@*` to resolve the latest stable package; omit only when central package management supplies it |
 | Shebang | `#!/usr/bin/env dotnet` — first line, LF endings, no BOM |
 | Avoid csproj cone | Never nest file-based apps inside a `.csproj` project directory |
 | Convert to project | `dotnet project convert file.cs` when complexity grows |

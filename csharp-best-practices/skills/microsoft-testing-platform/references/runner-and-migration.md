@@ -100,16 +100,20 @@ the argument.
 
 ## Select a framework runner
 
-The examples in this section are companion files under `../examples/`. Their package versions are
-representative stable versions at the time this skill was authored; update them as a compatible
-set rather than mixing old framework packages with a new MTP extension.
+The examples in this section are companion files under `../examples/`. Package IDs are shown
+without versions intentionally. Before creating a project, resolve the latest stable compatible
+release for every direct package from the online NuGet feed with the package CLI, then let the CLI
+or the repository's central package tooling record those resolved versions. Do not copy a version
+from this reference or an old MTP/VSTest project. The versionless XML below is a project shape;
+run the package tooling (or use the repository's CPM file) before treating it as a complete
+standalone project.
 
 ### MSTest
 
 For a normal SDK-style test project, prefer `MSTest.Sdk`:
 
 ```xml
-<Project Sdk="MSTest.Sdk/4.3.2">
+<Project Sdk="MSTest.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -135,7 +139,7 @@ Use manual setup when the project needs a different top-level SDK, such as
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MSTest" Version="4.3.2" />
+    <PackageReference Include="MSTest" />
   </ItemGroup>
 </Project>
 ```
@@ -162,10 +166,10 @@ Enable the NUnit runner and build the project as an executable:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="NUnit" Version="4.6.1" />
-    <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="4.11.0">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -173,9 +177,10 @@ Enable the NUnit runner and build the project as an executable:
 </Project>
 ```
 
-`NUnit3TestAdapter` 5.0.0 is the minimum version documented for MTP support. Keep
-`Microsoft.NET.Test.Sdk` when Visual Studio or other consumers still need the VSTest path; it is
-not a reason to use VSTest when the repository has opted into native MTP.
+Use the minimum adapter version required by the current MTP documentation, but install the latest
+stable compatible release rather than the documented floor. Keep `Microsoft.NET.Test.Sdk` when
+Visual Studio or other consumers still need the VSTest path; it is not a reason to use VSTest when
+the repository has opted into native MTP.
 
 ### xUnit.net v3
 
@@ -192,7 +197,7 @@ For a repository that explicitly targets MTP v2, select the MTP-v2 package varia
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
   </ItemGroup>
 </Project>
 ```

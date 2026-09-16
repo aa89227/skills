@@ -3,15 +3,16 @@ name: csharp-best-practices
 description: |
   This skill should be used when writing or reviewing C# code, asking about modern C# syntax,
   async/await patterns, LINQ best practices, record/required patterns, pattern matching,
-  or C# 12/13/14 language features. Trigger phrases: "write C# code", "review C#",
+  C# dependency installation, or C# 12/13/14 language features. Trigger phrases: "write C# code", "review C#",
   "C# best practice", "async pattern", "pattern matching", "C# 14 feature",
-  "extension members", "field keyword", "collection expressions".
+  "extension members", "field keyword", "collection expressions", "NuGet package version",
+  "install C# dependency".
 license: MIT
 metadata:
   author: aa89227
-  version: "3.0"
+  version: "3.1"
   tags: ["csharp", "dotnet", "best-practices", "language-reference"]
-  trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs", "pattern matching"]
+  trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs", "pattern matching", "NuGet", "package version"]
 ---
 
 # C# Best Practices
@@ -39,6 +40,31 @@ ambiguous or conflicting, or exact wording must be verified.
 - Avoid `async void`; prefer `async Task` or `async ValueTask`.
 - Primary constructor parameters are captures, **not** fields — assign to a field when mutation or multiple access is needed.
 - C# 14 span overload resolution may bind `array.Contains(x)` to `MemoryExtensions.Contains` — call `Enumerable.Contains()` explicitly in Expression trees.
+
+## Dependency Installation
+
+When a task introduces a NuGet package or a .NET tool, resolve its latest stable release from the
+configured online package feed at task time. Do not invent a version, copy one from memory, or copy
+one from this skill, another example, or an older project.
+
+- For .NET 10+, use `dotnet package add <PackageId> --project <path-to-project>` without
+  `--version`; for older SDKs use `dotnet add <path-to-project> package <PackageId>` without a
+  version option.
+- On the initial add, allow the command's restore to run; do not add `--no-restore` or rely only on
+  cached packages when the goal is to resolve the current release from the feed.
+- For a .NET tool, use `dotnet tool install <ToolId>` without `--version` (prefer a local tool
+  manifest when the tool belongs to the repository).
+- Let the CLI/package manager update the project, `Directory.Packages.props`, or tool manifest.
+  A resolved version written by the tool is acceptable; manually typing a remembered
+  `Version="..."`, `<PackageVersion ...>`, `VersionOverride`, or `@<version>` is not.
+- Do not hand-edit a `.csproj` merely to add a new dependency; the project-file change should be
+  produced by the package tooling after it resolves the feed.
+- If a package family must use aligned versions, query the current releases for every member and
+  choose the latest compatible set before restoring/building. Do not reuse an old set merely
+  because it appears in a sample.
+- If the configured feed cannot be reached, report that the latest version could not be resolved;
+  do not silently substitute a remembered version. Honor an explicit user or repository pin when
+  one already exists.
 
 ## C# 14 New Features Summary
 

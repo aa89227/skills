@@ -14,7 +14,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["csharp", "dotnet", "project-init", "scaffolding", "msbuild", "dotnet10"]
   trigger_keywords: ["init", "solution", "slnx", "scaffold", "Directory.Build.props", "Directory.Packages.props", "global.json", "central package management", "aspire", "專案初始化", "資料夾結構"]
 ---
@@ -55,6 +55,33 @@ ambiguous or conflicting, or exact wording must be verified.
 | `.gitattributes` | *(manual)* | Line endings / diff / binary rules |
 | `.config/dotnet-tools.json` | `dotnet new tool-manifest` | Local tool manifest |
 
+## Dependency Version Resolution
+
+When adding a NuGet package or .NET tool during initialization, resolve the latest stable release
+from the configured online feed at task time. Do not type a remembered version into a `.csproj`,
+`Directory.Packages.props`, or tool manifest, and do not copy a version from this document.
+
+```bash
+# .NET 10+
+dotnet package add <PackageId> --project <path-to-project>
+
+# .NET 9 and earlier
+dotnet add <path-to-project> package <PackageId>
+
+# Local tool; omit --version so the feed resolves the latest stable release
+dotnet tool install <ToolId>
+```
+
+Do not add `--no-restore` to the initial package command; the restore is what resolves the current
+release from the configured feed.
+
+The CLI may persist the resolved version in the project, central package file, or tool manifest;
+that generated metadata is expected and can be committed for reproducible restores. If several
+packages must align, resolve the current compatible versions together and verify restore/build.
+If the feed is unavailable, report the inability to resolve latest instead of falling back to
+memory. Existing explicit user/repository pins remain in force unless the task requests an
+upgrade.
+
 ¹ If `dotnet new packagesprops` is unavailable on your SDK, create `Directory.Packages.props` manually with the template below.
 
 ## Init Steps
@@ -89,7 +116,7 @@ dotnet new gitignore        # .gitignore
 
 # 7) Local tool manifest
 dotnet new tool-manifest    # .config/dotnet-tools.json
-# e.g. dotnet tool install csharpier
+# e.g. dotnet tool install csharpier  # resolves latest stable from the configured feed
 
 # ── ASK the user: will this solution use Aspire? ──────────────────────────
 #    If YES → set it up now (see the "Aspire" section): install the Aspire CLI
@@ -173,7 +200,7 @@ Best for a single small project / throwaway tool, where `src`/`tests` ceremony a
 If **yes**, install the Aspire CLI as a **local tool** (reuses the tool-manifest from step 7), then initialize:
 
 ```bash
-dotnet tool install aspire.cli      # pinned into .config/dotnet-tools.json
+dotnet tool install aspire.cli      # resolves latest stable; CLI records it in the manifest
 dotnet tool restore                 # restore the manifest
 
 aspire init                         # add Aspire to the current solution
@@ -182,7 +209,9 @@ aspire init                         # add Aspire to the current solution
 
 - `aspire init` generates a file-based AppHost (`AppHost.cs` + `apphost.run.json`). Aspire 13 targets `net10.0` and needs **no** workload.
 - **Requires** a container runtime (Docker Desktop or Podman) to run locally.
-- Installing via `dotnet tool` (not the global `aspire.dev/install.sh` script) keeps the CLI version pinned per-repo and restorable by every contributor (`dotnet tool restore`).
+- Installing via `dotnet tool` (not the global `aspire.dev/install.sh` script) lets the CLI resolve
+  the latest stable release and records that resolved version per-repo for every contributor
+  (`dotnet tool restore`).
 
 ### Common Aspire commands
 
@@ -208,7 +237,7 @@ This solution uses [Aspire](https://aspire.dev) for local orchestration.
 
 ### Setup & run
 ```bash
-dotnet tool restore     # restore the pinned Aspire CLI
+dotnet tool restore     # restore the CLI version resolved in the manifest
 aspire run              # start the AppHost + dashboard
 ```
 
@@ -293,11 +322,8 @@ Use for things that must run **after** each project is defined — e.g. injectin
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- All versions live here; projects reference WITHOUT a Version -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageVersion Include="NUnit" Version="4.2.2" />
-  </ItemGroup>
+  <!-- Add packages with the CLI so the current feed version is resolved; do not copy a
+       remembered version into this file. The CLI/package manager may populate entries here. -->
 </Project>
 ```
 
@@ -309,8 +335,14 @@ In each `.csproj`, omit the version:
 </ItemGroup>
 ```
 
-- CPM rule: a `<PackageReference>` with a `Version` under CPM is an error (NU1008). Versions belong on `<PackageVersion>`.
-- Need a one-off different version: `<PackageReference Include="X" VersionOverride="3.0.0" />`.
+Run the package CLI for each new package before restoring so it can resolve and record the current
+version in `Directory.Packages.props`.
+
+- CPM rule: a `<PackageReference>` with a `Version` under CPM is an error (NU1008). Let the
+  package tooling place its feed-resolved version in `<PackageVersion>`.
+- Need a one-off version only when an explicit compatibility policy requires it: use
+  `VersionOverride` with the version resolved from the current feed, not a value copied from a
+  sample.
 
 ### `nuget.config`
 
@@ -381,7 +413,9 @@ Commit the manifest so the whole team uses the same tool versions.
 
 1. **One solution format**: `.slnx` (XML). Don't keep both `.sln` and `.slnx`.
 2. **All repo-wide config at the root** so every project inherits it; never duplicate `TargetFramework`/`Nullable` per project unless overriding on purpose.
-3. **Central Package Management is on**: versions live only in `Directory.Packages.props`; `<PackageReference>` never carries a `Version`.
+3. **Central Package Management is on**: package tooling resolves new dependencies from the
+   online feed; versions live only in `Directory.Packages.props` and `<PackageReference>` never
+   carries a `Version`.
 4. **Pin the SDK** with `global.json` and commit it — local and CI use the same SDK.
 5. **Warnings are errors** (`TreatWarningsAsErrors` + `EnforceCodeStyleInBuild`) so style/analyzer issues fail the build, not review.
 6. **Pick one folder layout** (Option A by default) and keep test projects named `<Project>.Tests`.
@@ -398,7 +432,7 @@ Commit the manifest so the whole team uses the same tool versions.
 | Shared props | `Directory.Build.props` (TFM, Nullable, analyzers, warnings-as-errors) |
 | Shared targets | `Directory.Build.targets` (repo-wide analyzers, late items) |
 | Package versions | Only in `Directory.Packages.props`; refs are version-less |
-| One-off version | `VersionOverride` on the `<PackageReference>` |
+| One-off version | `VersionOverride` only for an explicit compatibility pin, using a feed-resolved version |
 | Line endings | `.gitattributes` `* text=auto eol=lf` |
 | Folder layout | `src/` + `tests/` (default) or flat for single project |
 | Aspire | ASK first; if yes: `dotnet tool install aspire.cli` → `aspire init`, document in README |

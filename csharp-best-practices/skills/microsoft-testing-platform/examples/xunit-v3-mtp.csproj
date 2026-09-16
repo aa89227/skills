@@ -1,5 +1,7 @@
 <!--
   xUnit.net v3 with an explicit MTP v2 package variant.
+  Package IDs are intentionally versionless; resolve the latest compatible stable versions with
+  the package CLI before using this example.
   See references/runner-and-migration.md#xunitnet-v3 and the xUnit-specific filter section in
   references/cli-and-configuration.md#filter-tests-inside-a-module.
 -->
@@ -13,12 +15,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
 
     <!-- Add these only while VSTest consumers still need compatibility. -->
     <!--
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.2.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.runner.visualstudio" />
     -->
   </ItemGroup>
 </Project>

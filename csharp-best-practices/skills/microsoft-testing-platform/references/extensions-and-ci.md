@@ -19,11 +19,19 @@ policy, or CI-specific output to an MTP test application.
 
 MTP extensions are NuGet packages. When `Microsoft.Testing.Platform.MSBuild` is active—the normal
 case for current MSTest, NUnit, and xUnit.net MTP runners—the package is detected and registered
-automatically, and the entry point is generated. A package reference alone should be enough:
+automatically, and the entry point is generated. Resolve the latest stable compatible extension
+from the online feed and add it without a version option:
+
+```bash
+dotnet package add Microsoft.Testing.Extensions.TrxReport --project <path-to-test-project>
+```
+
+The resulting package reference may contain the version resolved by the CLI. Do not hand-edit a
+`Version` attribute or copy one from this reference. A package reference alone should be enough:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.3.3" />
+  <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
 </ItemGroup>
 ```
 
@@ -35,9 +43,10 @@ dotnet run --project tests/Orders.Tests -- --help
 ```
 
 Align the platform, framework runner, and extension major versions. A package graph that combines
-MTP v1 and v2 APIs can fail before discovery with a type-load or extension-setup error. If the
-repository uses Central Package Management, pin the compatible set in one place and inspect the
-resolved graph with `dotnet list package --include-transitive`.
+MTP v1 and v2 APIs can fail before discovery with a type-load or extension-setup error. Query the
+current compatible releases for the whole set, let package tooling record the resolved versions,
+and inspect the graph with `dotnet list package --include-transitive`. If the repository uses
+Central Package Management, keep the CLI-resolved set in that central file.
 
 Do not disable generated entry-point support casually. If the project sets
 `<GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>`, automatic extension

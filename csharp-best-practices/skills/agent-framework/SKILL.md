@@ -10,14 +10,14 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "4.0"
-  agent-framework-version: "1.17.0"
+  version: "4.1"
+  reference-baseline: "1.17.0"
   release-note-baseline: "1.0.0"
   tags: ["csharp", "dotnet", "agent-framework", "ai-agent", "workflow", "mcp", "a2a", "agent-skills"]
   trigger_keywords: ["agent-framework", "AIAgent", "Microsoft.Agents", "ChatClientAgent", "AgentSkillsProvider", "workflow", "MCP", "A2A", "AG-UI"]
 ---
 
-# Microsoft Agent Framework (.NET) — 1.17.0
+# Microsoft Agent Framework (.NET) — API baseline 1.17.0
 
 ## Instruction Retention
 
@@ -31,10 +31,24 @@ ambiguous or conflicting, or exact wording must be verified.
 > Verified against the `dotnet-1.17.0` tag of `microsoft/agent-framework` on 2026-08-07.
 > Read [the release-difference checklist](references/release-differences-1.0.0-to-1.17.0.md)
 > when a version-sensitive detail matters.
+>
+> The `1.17.0` label is the API/reference baseline for this document, not a package-install
+> target. Resolve the current package release before starting new work.
 
 ## Version and package rules
 
-- Target the 1.17.0 package family unless the application explicitly pins another version.
+- For every newly introduced NuGet package, resolve the latest stable release from the configured
+  online NuGet feed at task time. Use `dotnet package add <PackageId> --project <project>` on
+  .NET 10+ or `dotnet add <project> package <PackageId>` on older SDKs, with no `--version`.
+- Do not copy `1.17.0` or any other version from this skill, its references, examples, memory, or
+  an older project into a new `PackageReference`. Let the CLI/package manager write the resolved
+  version to the project or central package file.
+- Use the latest compatible release of the selected Agent Framework package family and its
+  provider/integration packages. When versions must align, query every member's current release
+  online and resolve the compatible set together before restoring/building.
+- If the configured feed cannot be reached, report that the latest version could not be resolved;
+  do not silently fall back to a remembered version. Preserve an explicit application/repository
+  pin unless the task requests an upgrade.
 - Use .NET 10 for new work; .NET 8 and .NET 9 remain supported by the framework guidance.
 - Treat `Microsoft.Agents.AI` and `Microsoft.Agents.AI.Abstractions` as the core API surface.
 - Select a provider package deliberately: `Microsoft.Agents.AI.OpenAI`, Foundry packages,
@@ -45,7 +59,7 @@ ambiguous or conflicting, or exact wording must be verified.
 - Hyperlight, LocalCodeAct, Harness, Shell, hosted Files/RAG, and ToolboxMcpSkills are
   provider/integration-specific surfaces; isolate them behind a capability boundary.
 - Treat every `Experimental`/preview/alpha API warning as a versioned contract; do not suppress it
-  blindly. Check the 1.17.0 package and release notes before copying a sample.
+  blindly. Check the resolved package and current release notes before copying a sample.
 - The old `Microsoft.Agents.AI.AGUI` package/API is gone. Use the external `AGUI.*` packages and
   `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` with `AddAGUIServer`/`MapAGUIServer`.
 - Durable Task/Azure Functions integrations moved to

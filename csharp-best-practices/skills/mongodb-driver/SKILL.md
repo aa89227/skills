@@ -11,13 +11,13 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "4.0"
-  driver-version: "3.9.0"
+  version: "4.1"
+  reference-baseline: "3.9.0"
   tags: ["csharp", "dotnet", "mongodb", "nosql", "database", "driver"]
   trigger_keywords: ["MongoDB", "MongoClient", "IMongoCollection", "BsonDocument", "Builders", "MongoDB.Driver", "Atlas Search", "VectorSearch", "RankFusion", "GridFS", "BsonClassMap"]
 ---
 
-# MongoDB C# Driver — v3.9.0
+# MongoDB C# Driver — API baseline v3.9.0
 
 ## Instruction Retention
 
@@ -28,7 +28,26 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-> Verified against `v3.9.0` tag of `mongodb/mongo-csharp-driver`.
+> Verified against `v3.9.0` tag of `mongodb/mongo-csharp-driver`. This is a documentation/API
+> baseline, not a package-install target; resolve the latest compatible driver before adding it.
+
+## Package Installation
+
+For a new MongoDB dependency, resolve the latest stable `MongoDB.Driver` release from the online
+NuGet feed. Use the package CLI without `--version`:
+
+```bash
+# .NET 10+
+dotnet package add MongoDB.Driver --project <path-to-project>
+
+# .NET 9 and earlier
+dotnet add <path-to-project> package MongoDB.Driver
+```
+
+Do not hand-edit a `.csproj` or copy `3.9.0` (or any version from this skill, an example, or memory)
+into `PackageReference`. Let the CLI update the project or central package file with the version
+it resolved, then restore/build and adapt the API usage if the current release differs from this
+baseline.
 
 ## Quick Reference
 

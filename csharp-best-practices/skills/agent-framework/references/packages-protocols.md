@@ -1,8 +1,11 @@
-# Microsoft Agent Framework — packages and protocols (`dotnet-1.17.0`)
+# Microsoft Agent Framework — packages and protocols (API baseline `dotnet-1.17.0`)
 
 This reference complements `SKILL.md`. It records the package ownership and protocol changes that
 are easy to get wrong when upgrading from the repository's former 1.0.0 guidance. Package status
-is version-sensitive; verify the application's exact package graph before shipping.
+is version-sensitive; verify the application's exact package graph before shipping. The versions
+shown here describe the reference snapshot, not package-install targets. For a new dependency,
+resolve the latest stable release from the online NuGet feed with the package CLI; do not copy a
+version from this snapshot.
 
 ## Contents
 
@@ -74,8 +77,8 @@ transitive versions.
 
 `Microsoft.Agents.AI.AGUI` was removed in 1.14.0. Install the external official packages as
 needed: `AGUI.Abstractions`, `AGUI.Client`, `AGUI.Server`, and optionally `AGUI.Formatting` and
-`AGUI.Protobuf`. The 1.17.0 MAF source pins the external package family at 0.0.3; verify the
-compatible external release before changing it.
+`AGUI.Protobuf`. The 1.17.0 MAF source snapshot used an older external package family; do not copy
+that snapshot version. Resolve the latest compatible external release online instead.
 
 ```csharp
 builder.Services.AddAGUIServer();
