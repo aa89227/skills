@@ -12,9 +12,10 @@ Record browser sessions for review. Controlled by environment variable — off b
 PLAYWRIGHT_RECORD_VIDEO=true dotnet test
 ```
 
-## AspireFixture Changes
+## Fixture Changes
 
-Add video support to the fixture's `NewContextAsync`:
+Add video support to the selected standalone or Aspire fixture's `NewContextAsync`. Do not introduce
+Aspire just to record a browser session:
 
 ```csharp
 public static bool IsVideoEnabled =>
@@ -22,11 +23,11 @@ public static bool IsVideoEnabled =>
 
 public async Task<IBrowserContext> NewContextAsync()
 {
-    if (_browser is null) throw new InvalidOperationException("Browser not initialized");
+    if (Browser is null) throw new InvalidOperationException("Browser not initialized");
 
     var options = new BrowserNewContextOptions
     {
-        BaseURL = ContainerWebBaseUrl,
+        BaseURL = BaseUrl,
         ViewportSize = new ViewportSize { Width = 1280, Height = 720 },
         ReducedMotion = ReducedMotion.Reduce,
         ColorScheme = ColorScheme.Light,
@@ -39,19 +40,19 @@ public async Task<IBrowserContext> NewContextAsync()
         options.RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 };
     }
 
-    return await _browser.NewContextAsync(options);
+    return await Browser.NewContextAsync(options);
 }
 ```
 
 ## Test Method Changes
 
-### With ICollectionFixture (primary pattern)
+### With a collection or assembly fixture
 
 Save the video before disposing the context. Use `TestContext.Current.TestMethod?.MethodName` (xUnit v3) to name the output folder:
 
 ```csharp
 [Collection(E2ECollection.Name)]
-public sealed class MyFeatureE2ETests(AspireFixture fixture)
+public sealed class MyFeatureE2ETests(E2EFixture fixture)
 {
     [Fact]
     public async Task ShouldCreateItemSuccessfully()
@@ -67,7 +68,7 @@ public sealed class MyFeatureE2ETests(AspireFixture fixture)
 
     private static async Task SaveVideoAsync(IPage page)
     {
-        if (!AspireFixture.IsVideoEnabled || page.Video is null) return;
+        if (!E2EFixture.IsVideoEnabled || page.Video is null) return;
 
         var methodName = TestContext.Current.TestMethod?.MethodName ?? "unknown";
         var videoDir = Path.Combine(
@@ -78,17 +79,17 @@ public sealed class MyFeatureE2ETests(AspireFixture fixture)
 }
 ```
 
-### With IClassFixture + IAsyncLifetime (alternative)
+### With IClassFixture + IAsyncLifetime
 
 ```csharp
-public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLifetime
+public sealed class MyFeatureE2ETests : IClassFixture<E2EFixture>, IAsyncLifetime
 {
-    private readonly AspireFixture _fixture;
+    private readonly E2EFixture _fixture;
     private IBrowserContext _context = null!;
     private IPage _page = null!;
     private string _testMethodName = string.Empty;
 
-    public MyFeatureE2ETests(AspireFixture fixture) => _fixture = fixture;
+    public MyFeatureE2ETests(E2EFixture fixture) => _fixture = fixture;
 
     public async ValueTask InitializeAsync()
     {
@@ -100,7 +101,7 @@ public sealed class MyFeatureE2ETests : IClassFixture<AspireFixture>, IAsyncLife
 
     public async ValueTask DisposeAsync()
     {
-        if (AspireFixture.IsVideoEnabled && _page.Video is not null)
+        if (E2EFixture.IsVideoEnabled && _page.Video is not null)
         {
             var videoDir = Path.Combine(
                 AppContext.BaseDirectory, "..", "..", "..", "videos", _testMethodName);
