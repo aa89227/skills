@@ -13,7 +13,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "2.3"
+  version: "2.4"
   tags: ["dotnet", "cli", "build", "test", "run", "automation", "csharp", "logging"]
   trigger_keywords: ["dotnet build", "dotnet test", "dotnet run", "dotnet publish",
     "dotnet pack", "dotnet restore", "dotnet clean", "dotnet CLI", "run a .NET command",
@@ -60,13 +60,20 @@ reduction happens after capture, through reporting and log analysis.
 
 ### 2. Choose an accessible artifact directory
 
-Store the complete output in a per-run directory. Resolve the artifact root in
-this order:
+Store the complete output in a per-run directory. The canonical default
+artifact root is `artifacts/dotnet-runner/` below the current workspace. The
+agent MUST use that default and MUST NOT choose, ask for, or invent another
+artifact location.
+
+Only honor a different artifact root when the caller or the current harness
+explicitly supplies one. Resolve the artifact root in this order:
 
 1. An explicit artifact directory supplied by the caller, such as
    `--artifact-dir DIR` or `DOTNET_RUNNER_ARTIFACT_DIR`.
-2. An artifact or scratch directory supplied by the current harness.
-3. `artifacts/dotnet-runner/<run-id>/` below the current workspace.
+2. An artifact or scratch directory explicitly supplied by the current
+   harness.
+3. The canonical default `artifacts/dotnet-runner/` below the current
+   workspace.
 
 Do not default to `/tmp`, the user's home directory, `/var/log`, or a
 host-specific agent directory. If no location is both writable by the process
@@ -86,16 +93,23 @@ Create a unique run directory and never overwrite a previous run by default.
 Keep command metadata redacted; do not persist secrets from arguments or the
 environment. The workspace artifact directory should normally be gitignored.
 
-### 3. Use the bundled shell runner when native capture is unavailable
+### 3. Use the bundled shell runner when artifact capture is required
 
-The skill includes `scripts/run-dotnet.sh` for hosts that do not expose a
-native process-capture API. Invoke the script as the top-level command and pass
-the complete .NET argument list after `--`:
+The skill includes `scripts/run-dotnet.sh` for hosts whose native process
+executor cannot persist the complete output and `report.json` in the canonical
+artifact directory. This is the normal path when the workflow requires saved
+logs. Invoke the script as the top-level command and pass the complete .NET
+argument list after `--`:
 
 ```bash
-scripts/run-dotnet.sh --artifact-dir artifacts/dotnet-runner -- test \
+scripts/run-dotnet.sh -- test \
   tests/Example.Tests/ --filter-trait "Category=E2E"
 ```
+
+Do not add `--artifact-dir artifacts/dotnet-runner` to the standard invocation;
+the runner already supplies that canonical default. The runner also defaults to
+`compact` mode. Use `--artifact-dir` or a non-default `--mode` only when the
+caller or harness explicitly selected it.
 
 The script starts `dotnet` with `dotnet "$@"`; it does not use `eval`, rebuild
 the command as a shell string, or add a `tee` pipeline. In its default
@@ -103,11 +117,24 @@ the command as a shell string, or add a `tee` pipeline. In its default
 creates `report.json`, and returns the original exit code. `tail` adds a
 bounded post-run tail, while `full` explicitly prints the saved log.
 
-When a host has a native process-capture API, prefer that API over the shell
-runner. When a host applies command approval rules, allow the reviewed runner
-entry point as a narrow capability; do not broaden approval to arbitrary shell
-commands merely because the runner exists. The shell runner is an execution
-adapter, not a way to bypass the host's security policy.
+When a host has a native process-capture API that also provides the required
+artifact files and report, it MAY replace the shell runner while preserving the
+same artifact contract. A native executor that only returns stdout/stderr is
+not a replacement when the workflow requires a saved complete log. Do not
+switch to direct `dotnet` merely to avoid an approval prompt if doing so would
+discard the artifact contract.
+
+When command approval is required for the runner, request one narrow,
+persistent approval for the bundled runner entry point rather than a separate
+approval for every project-specific command. Do not include the .NET arguments,
+project path, or artifact run ID in that approval rule. If the host cannot
+persist such a rule, report that host limitation; do not bypass it by silently
+switching to a command that loses the required log and report. A skill cannot
+grant, persist, or suppress host permissions, and the shell runner is not a way
+to bypass the host's security policy.
+
+Use `compact` mode unless the caller explicitly asks for the complete raw log;
+`full` mode is not required for ordinary build or test execution.
 
 ### 4. Capture without flooding the caller
 
