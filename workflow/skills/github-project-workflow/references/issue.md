@@ -55,6 +55,68 @@ Acceptance criteria SHOULD describe what a user, operator, or reviewer can obser
 test or internal check MAY be included when it is necessary evidence, but it MUST be accompanied by
 the plain-language outcome it protects.
 
+## Mandatory Reader-first preflight
+
+Complete this preflight before calling GitHub to create or update an Issue. It is a publication
+gate, not an optional review note. If any item fails, keep the draft local and rewrite it before
+publishing. Ask the user only when the intended reader, language, or observable outcome cannot be
+reasonably determined.
+
+- **Audience and language:** The title, reader-facing sections, and `Release Note` use the user's
+  preferred language and are understandable to a non-engineering reader.
+- **Plain-language outcome:** `Summary`, `Background / Problem`, and `Goal` explain the problem and
+  desired result without requiring knowledge of the implementation.
+- **Technical-term scan:** Identify every acronym, framework name, API/class name, architecture
+  term, test tool, and implementation verb that a non-engineering reader may not know. For each term
+  that remains in a reader-facing section, its first occurrence has a short plain-language
+  explanation, for example `通知方式（notification method）`. A glossary entry by itself does not
+  excuse an unexplained first occurrence.
+- **Technical-detail boundary:** Move exact API names, commands, schemas, test frameworks, package
+  names, data structures, and implementation mechanics to `Implementation Notes` unless the exact
+  term is required to make the behavior unambiguous. When it remains earlier, explain why the exact
+  term matters.
+- **Observable acceptance:** Every acceptance criterion uses `- [ ]` and describes a result that a
+  user, operator, or reviewer can observe. Pair any internal test or implementation condition with
+  the user-facing outcome it protects.
+- **Glossary completeness:** Use `Terms / Glossary` for every necessary technical term that cannot
+  be explained inline. Use `None` only when no such terms remain.
+- **Structure:** Required sections appear in the canonical order, `Open Questions` uses the required
+  table shape, unresolved placeholders are removed, and `Implementation Notes` is the final section.
+- **Final reader pass:** Read only the title through `Release Note` as if you were the intended
+  non-engineering reader. If the reader would need to ask what a term means or why an implementation
+  choice matters, rewrite that passage before publishing.
+
+Do not treat English text itself as a failure. Product names and exact technical identifiers may
+remain when necessary; the failure is unexplained jargon or implementation detail in a section that
+should communicate user impact.
+
+Examples in this reference MUST remain domain-neutral. Do not reuse the triggering Issue's product,
+API, framework, class, or architecture names in an example; examples demonstrate the rewrite pattern,
+not the Issue's technical domain.
+
+### Reader-first drafting example
+
+Avoid putting the implementation in the goal:
+
+```text
+Use a new internal mechanism to process the submitted data and update the view.
+```
+
+Prefer a user-facing outcome:
+
+```text
+使用者送出資料後，畫面會顯示更新後的結果。
+```
+
+Keep the exact implementation vocabulary for implementers:
+
+```text
+Implementation Notes:
+- Validate the submitted input before processing.
+- Save the processed result in the appropriate application state.
+- Return a stable result summary for verification.
+```
+
 ## Required issue fields
 
 Every Issue MUST have a type from this closed set:

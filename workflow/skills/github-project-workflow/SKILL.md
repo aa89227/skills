@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.3"
+  version: "1.4"
   tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
@@ -24,6 +24,27 @@ workflow supports one PR, multiple PRs, stacked PRs, milestones, releases, and h
 This skill is applicable when work is represented by a GitHub Issue and Project. For a purely
 local task with no tracked requirement, do not invent a Project lifecycle around it.
 
+## Reader-first Issue Gate
+
+Every Issue create or revision MUST pass a reader-first gate before any GitHub Issue mutation:
+
+1. Identify the intended reader and selected Issue language. Use plain language in the title,
+   `Summary`, `Background / Problem`, `Goal`, `Scope`, `Acceptance Criteria`, `Constraints`,
+   `Edge Cases`, and `Release Note`.
+2. Explain each necessary technical term at its first reader-facing use. Exact API names, commands,
+   framework names, and identifiers may remain when necessary, but they must be paired with a plain
+   description or moved to `Terms / Glossary` / `Implementation Notes`.
+3. Keep implementation mechanics out of reader-facing sections unless the exact detail is required
+   to make the observable requirement unambiguous. Put those mechanics in the final
+   `Implementation Notes` section.
+4. Make every acceptance criterion describe an observable user, operator, or reviewer outcome. A
+   technical test or framework constraint may support that outcome, but must not be the only wording.
+5. If any check fails, rewrite the draft before calling GitHub. Do not publish a technically complete
+   Issue that a non-engineering reader cannot understand merely because the canonical headings are present.
+
+Use the mandatory checklist and drafting examples in
+[references/issue.md](references/issue.md#mandatory-reader-first-preflight) for the final pass.
+
 ## Operating contract
 
 - MUST read the current GitHub artifacts and repository state; MUST NOT rely on previous chat
@@ -35,6 +56,10 @@ local task with no tracked requirement, do not invent a Project lifecycle around
 - MUST write Issue requirements in plain, non-engineering language by default. When technical
   detail is necessary, define the term for the intended reader and keep implementation detail in
   the final Issue section as specified by [references/issue.md](references/issue.md).
+- MUST complete the Reader-first Issue Gate and the mandatory preflight in
+  [references/issue.md](references/issue.md#mandatory-reader-first-preflight) before creating or
+  revising an Issue. A draft that fails the preflight MUST be rewritten before any GitHub Issue
+  mutation.
 - MUST treat Issue Priority as planning metadata, not a lifecycle status, review result, severity
   score, or roadmap horizon; use only the values and rules in [references/priority.md](references/priority.md).
 - MUST record a reason and supporting evidence whenever Priority is assigned or changed. Do not
@@ -147,7 +172,7 @@ Read only the references needed for the current operation:
 - Lifecycle transition, status criteria, approval, or cancellation: [lifecycle.md](references/lifecycle.md)
 - Checkpoint output, pause/resume behavior, or next-action reporting: [checkpoint.md](references/checkpoint.md)
 - Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
-- Create or revise an Issue, type, acceptance criteria, open questions, or release note: [issue.md](references/issue.md)
+- Create or revise an Issue, type, acceptance criteria, open questions, release note, or reader-first check: [issue.md](references/issue.md)
 - Assign or reassess Issue Priority and record its rationale: [priority.md](references/priority.md)
 - Initialize, inspect, or configure Project fields, workflows, automations, and Labels: [initialization.md](references/initialization.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
