@@ -58,8 +58,11 @@ GitHub-native base/head branch relationship is authoritative.
 
 - Every implementation PR MUST start as Draft unless the repository does not support Draft PRs or
   a human explicitly requests immediate review.
-- A Draft PR MAY exist while the Issue is `Ready` for planning, but actual implementation starts
-  the Issue's `In Progress` state.
+- A Draft PR MAY exist while a non-Design-System Issue is `Ready` for planning, but actual
+  implementation starts the Issue's `In Progress` state. For any non-`None` Design System scope,
+  `Implementation Gate: Blocked` forbids an implementation PR; see
+  [design-system-handoff.md](design-system-handoff.md). A gate-blocked Issue must complete the
+  design handoff before creating a runtime implementation PR.
 - A PR becoming Ready for Review MUST NOT by itself move the Issue to `In Review`.
 - Move the Issue to `In Review` only when all required implementation slices and PRs are reviewable,
   required checks pass, known limitations are recorded, and the Issue release note matches the

@@ -4,6 +4,14 @@ React and Blazor should share the behavioral scenario definitions, not necessari
 or assertion library. The shared test specification is the executable interpretation of the
 Component Specification and is a release input.
 
+## Handoff gate
+
+For a new or changed shared component, create the Test/Conformance scenarios and complete their
+mapping to the Component and Accessibility Specifications before `build`. The mapping is part of
+Design System Approval; passing tests without a recorded scenario mapping, an `Issue Ready` status,
+or an Agent's own judgment cannot open the implementation gate. Scenario IDs and host adapters are
+internal outputs, not choices the requester must make.
+
 ## Scenario shape
 
 Each scenario should have the following. A machine-readable envelope is available in

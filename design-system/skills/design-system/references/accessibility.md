@@ -4,6 +4,19 @@ Accessibility is part of the Component Specification, not a final visual review.
 implementations may use different APIs, but the resulting semantic tree and keyboard/focus
 experience must satisfy the same contract.
 
+## Handoff gate
+
+For a new or changed shared component, the Accessibility requirements for the current experience
+must be recorded before `build`. They are part of the Design System contract packet and require
+Human approval together with the Experience Brief, Component Specification, and Test/Conformance
+Specification. `Issue Ready` is only Requirement Approval; it does not approve this accessibility
+contract. Passing an automated scan or a host test suite is evidence, not approval.
+
+Ask the requester about accessibility only when the product experience is ambiguous, using plain
+language such as keyboard use, readable contrast, focus, motion, or feedback. Do not ask the
+requester to select ARIA attributes, DOM structure, or a test runner; derive those requirements
+internally and explain the visible result.
+
 ## Contract requirements
 
 For every interactive component, specify:

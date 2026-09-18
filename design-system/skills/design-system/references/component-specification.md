@@ -64,6 +64,22 @@ Every shared component should have one versioned contract with these sections:
    - Contract version, breaking-change policy, migration path, specification owner, host owners,
      and the release gate.
 
+## Handoff and approval boundary
+
+This specification is an internal Design System artifact. A GitHub Issue being `Ready` proves only
+Requirement Approval; it does not approve this contract. Do not infer contract approval from a
+passing test suite, a package manifest, a Draft PR, or an Agent's own review.
+
+Before `build`, verify the current request has a confirmed Experience Brief, this Component
+Specification has explicit Human approval, Accessibility requirements are recorded, and every
+normative behavior is mapped to Test/Conformance scenarios. The implementation plan and validation
+targets must also be written before the implementation gate can open. If any item is missing, keep
+the work in `design` mode and do not invent the missing behavior in React or Blazor code.
+
+The requester should receive a plain-language experience summary, not a request to choose the
+contract's token names, API names, ARIA attributes, DOM structure, or test runner. The Design System
+maintainer translates the confirmed experience into this specification and records approval.
+
 ## Normative language
 
 Use `MUST` for interoperability and accessibility requirements, `SHOULD` for the default that a

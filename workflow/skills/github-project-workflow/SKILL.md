@@ -71,6 +71,14 @@ Use the mandatory checklist and drafting examples in
   Project, Issue, PR, Workflow, or Label changes require explicit confirmation after the report.
 - MUST keep Project Status, Labels, and Priority as orthogonal concerns: Status controls lifecycle,
   Labels classify and support search, and Priority controls Issue action order.
+- MUST distinguish `Requirement Approval` from `Design System Approval`. `Specifying` → `Ready`
+  approves the Issue's requirement, scope, and acceptance criteria only; **`Issue Ready` 不等於
+  `Design System Contract Approved`**.
+- MUST read [references/design-system-handoff.md](references/design-system-handoff.md) when an
+  Issue or request involves Design System, design tokens, visual rules, theme, component contract,
+  shared CSS, accessibility contract, conformance, or a new Design System component. If no approved
+  Component Specification exists, route to Design System `design` mode and MUST NOT route directly
+  to `build`.
 - MUST use only the lifecycle statuses defined below. `Blocked`, `CI Failed`, `Changes Requested`,
   and `Waiting` are metadata or signals, never lifecycle statuses.
 - MUST run the transition protocol in
@@ -135,6 +143,11 @@ create lifecycle statuses for those modes.
 The following are the workflow's human approval gates:
 
 - `Specifying` → `Ready`: the current specification is approved.
+- For Design System work, the separate `Design System Approval` requires a confirmed Experience
+  Brief, approved Component Specification, recorded Accessibility requirements, and approved
+  Test/Conformance Specification with completed mapping. It is not supplied by `Ready`, passing
+  tests, CI, or an Agent's judgment. The implementation gate also requires an implementation plan
+  and validation targets.
 - `In Review` → `Ready to Merge`: the current implementation is approved. For a
   `Research`/`Prototype` item with no repository artifact, the human may approve the recorded
   result by directly setting its Project Status to `Ready to Merge`.
@@ -183,6 +196,8 @@ experiment; if work has not started, keep the truthful earlier status.
 Read only the references needed for the current operation:
 
 - Lifecycle transition, status criteria, approval, or cancellation: [lifecycle.md](references/lifecycle.md)
+- Design System routing, approval, metadata, mixed Issues, or `Ready` → `In Progress` gate:
+  [design-system-handoff.md](references/design-system-handoff.md)
 - Checkpoint output, pause/resume behavior, or next-action reporting: [checkpoint.md](references/checkpoint.md)
 - Decide whether to decompose a broad/uncertain request or manage discovery children: [epic.md](references/epic.md)
 - Create or revise an Issue, type, acceptance criteria, open questions, release note, or reader-first check: [issue.md](references/issue.md)
@@ -200,6 +215,10 @@ smallest set that covers all affected sources of truth.
 ## Non-negotiable safety rules
 
 - MUST NOT implement before `Specifying` → `Ready` has human approval.
+- For any non-`None` Design System scope, MUST NOT enter `In Progress`, create an implementation
+  branch, modify runtime code, or create an implementation PR while `Implementation Gate: Blocked`.
+  Only `Implementation Gate: Open` passes the Design System gate; the complete conditions are in
+  [design-system-handoff.md](references/design-system-handoff.md).
 - MUST NOT merge or integrate before `In Review` → `Ready to Merge` has human approval.
 - MUST NOT push implementation commits to the target branch before that implementation approval.
 - MUST prefer GitHub PR merge. Local integration is a controlled fallback only, and must follow

@@ -23,6 +23,11 @@ Do not ask the requester to choose:
 - React versus Blazor behavior when the Design System declares both hosts;
 - a package name or installed version. Resolve those from project files and package manifests.
 
+When this intake is reached from a GitHub Issue, it is the required first step whenever the Issue
+or request involves Design System work but no current approved Component Specification can be
+verified. An Issue `Ready` status is only Requirement Approval; it does not authorize skipping
+this intake or starting `build`.
+
 Accessibility, responsive behavior, keyboard support, reduced motion, and semantic HTML are Design
 System quality defaults. Ask about them only when the product experience itself is ambiguous, not as
 an implementation quiz.
@@ -30,8 +35,10 @@ an implementation quiz.
 ## Progressive questions
 
 Ask only for decisions that cannot be inferred from the request, existing design references, or the
-current Design System. Ask at most three short questions in one turn. Prefer a concrete visual or
-interaction question over a technical multiple-choice question.
+current Design System. Run
+`scripts/resolve_design_system_context.py <target-root> --mode design --format json` before
+asking. Ask at most three short questions in one turn, and do not repeat a decision that is already
+known. Prefer a concrete visual or interaction question over a technical multiple-choice question.
 
 Good questions:
 
@@ -42,6 +49,11 @@ Good questions:
 Do not ask all possible questions by default. If the requester has supplied a design, screenshot,
 existing component, or detailed example, inspect it and ask only the unresolved experience decisions.
 Reflect the interpretation back in plain language before committing to a shared Design System change.
+The response must include a compact Experience Brief and a plain-language restatement for the
+requester to confirm. Until that confirmation, do not create runtime implementation, tokens, CSS,
+a Blazor component, an implementation branch, or an implementation PR. A brief confirmation is
+not the complete Design System Approval; after confirmation, derive the internal Component,
+Accessibility, and Test/Conformance Specifications and obtain their approvals separately.
 
 ## Internal translation
 
@@ -81,7 +93,10 @@ References: <screenshots, designs, or examples>
 ```
 
 The brief is input to the internal Component Specification and shared Test Specification. It is not
-itself a replacement for those artifacts.
+itself a replacement for those artifacts. The Design System contract is not ready for `build` until
+the brief is confirmed, the Component Specification is approved, Accessibility requirements are
+recorded, Test/Conformance scenarios are created and mapped, and an implementation plan with
+validation targets has been produced.
 
 ## When the experience is not yet enough
 

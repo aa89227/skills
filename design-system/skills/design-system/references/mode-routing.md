@@ -2,6 +2,22 @@
 
 Use this reference when a request spans multiple Design System layers or repositories.
 
+## GitHub Project cross-skill gate
+
+When the request is represented by a GitHub Issue, apply the GitHub Project Workflow handoff
+before choosing an implementation mode. If the Issue or request mentions `Design System`,
+`design tokens`, `visual rules`, `theme`, `component contract`, `shared CSS`, `accessibility
+contract`, `conformance`, or a new Design System component, check for a current approved Component
+Specification first. If it is missing, use `design` and do not route directly to `build`.
+
+`Issue Ready` is Requirement Approval only. It is not Design System Approval. Design System
+Approval requires the confirmed Experience Brief, approved Component Specification, recorded
+Accessibility requirements, and approved Test/Conformance Specification with completed mapping.
+The build gate also requires an implementation plan and validation targets. When the GitHub
+Project Workflow skill is active, use its canonical
+`workflow/skills/github-project-workflow/references/design-system-handoff.md` reference for the
+metadata values, lifecycle gate, mixed-Issue examples, and status rules.
+
 ## Mode matrix
 
 | Project role | `design` | `build` | `consume` | `conformance` | `release` |
@@ -33,13 +49,24 @@ internal outputs, not questions the requester must answer:
 - supported hosts and render modes;
 - governance, ownership, and compatibility policy.
 
+Run `scripts/resolve_design_system_context.py <target-root> --mode design --format json` before
+asking questions. Ask at most three unresolved questions about the experience, layout, actions,
+states, or feedback. Do not ask for token names, CSS variables, component IDs, APIs, ARIA
+attributes, DOM structure, package versions, or test runners. Produce and repeat a short
+Experience Brief in plain language, and wait for confirmation before creating runtime
+implementation, tokens, CSS, a Blazor component, an implementation branch, or an implementation
+PR.
+
 Design output should be a decision or contract proposal, not unreviewed framework code.
 
 ## Build mode
 
-Use `build` only when shared artifacts belong in a Design System project. Read the approved
-Component Contract and token source before changing implementation code. Keep React and Blazor
-framework idioms native, but preserve the same user-observable behavior and conformance IDs.
+Use `build` only when shared artifacts belong in a Design System project and the complete handoff
+gate is open. Read the confirmed Experience Brief, approved Component Contract, recorded
+Accessibility requirements, mapped Test/Conformance scenarios, token source, implementation plan,
+and validation targets before changing implementation code. Keep React and Blazor framework idioms
+native, but preserve the same user-observable behavior and conformance IDs. Passing tests or an
+Issue's `Ready` Status does not open the Design System gate.
 
 If the active project is a consumer, build mode means application-local code unless the user
 explicitly identifies a separate Design System target. A request for a shared change becomes a
@@ -86,3 +113,7 @@ When moving from a consumer request to a Design System change, carry forward:
 
 The receiving workflow must re-resolve target context. It must not rely on the previous Skill's
 working directory or conversation assumptions.
+
+For a mixed request, finish `design` before `build`. If the design and implementation are
+independently reviewable or too large, recommend native parent/sub-issues rather than a custom
+Project Status. Keep the GitHub lifecycle values unchanged.

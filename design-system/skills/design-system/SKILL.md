@@ -33,7 +33,9 @@ For a design request, ask only about the experience in plain language: what it s
 when it appears, how it is used, and how it responds in visible states. Then translate that brief
 internally into tokens, components, accessibility requirements, test scenarios, and host
 implementations. Read [experience-intake.md](references/experience-intake.md) for the question
-boundary and progressive intake rules.
+boundary and progressive intake rules. When a request is tracked by the GitHub Project workflow,
+also apply its `design-system-handoff` reference: `Issue Ready` is Requirement Approval only and
+does not approve a Design System contract.
 
 ## Start every invocation with context resolution
 
@@ -41,17 +43,27 @@ boundary and progressive intake rules.
    location where this Skill was installed.
 2. Read `.design-system/project.json` when it exists. Follow
    [project-context.md](references/project-context.md) for the schema and fallback signals.
-3. Classify the task mode: `design`, `build`, `consume`, `conformance`, or `release`.
+3. Classify the task mode: `design`, `build`, `consume`, `conformance`, or `release`. Before
+   selecting `build`, check whether the request or Issue mentions Design System, design tokens,
+   visual rules, theme, component contract, shared CSS, accessibility contract, conformance, or a
+   new Design System component. If it does not have a verifiable approved Component Specification,
+   select `design` and do not route directly to `build`.
 4. Automatically run the read-only preflight
    `scripts/resolve_design_system_context.py <target-root> --mode <mode> --format json` for every
-   Design System task. For `consume` and `conformance`, this preflight must resolve the installed
-   package catalog before recommending a component, API, import, CSS entrypoint, usage example, or
-   upgrade. For `release`, validate an explicitly supplied or generated candidate manifest when
-   one exists; a source Design System does not need to have its own package installed. The user does
-   not need to run this command.
+   Design System task. In `design` mode, run exactly
+   `scripts/resolve_design_system_context.py <target-root> --mode design --format json` before
+   asking questions or drafting artifacts.
+   For `consume` and `conformance`, this preflight must resolve the installed package catalog before
+   recommending a component, API, import, CSS entrypoint, usage example, or upgrade. For `release`,
+   validate an explicitly supplied or generated candidate manifest when one exists; a source Design
+   System does not need to have its own package installed. The user does not need to run this
+   command.
 5. When the mode is `design`, capture or clarify a plain-language experience brief before asking
    for technical artifacts. Ask at most three unresolved visual/interaction questions at a time;
    do not ask the requester to choose tokens, APIs, ARIA, DOM, package versions, or host mappings.
+   Produce the brief and repeat the understanding in plain language. Until the requester confirms
+   that brief, do not create runtime implementation, tokens, CSS, a Blazor component, an
+   implementation branch, or an implementation PR.
 6. Read [package-discovery.md](references/package-discovery.md) for catalog/provider behavior and
    [consumer-outcome.md](references/consumer-outcome.md) when the preflight reports a gap or
    prerequisite.
@@ -94,6 +106,12 @@ Specification. The agent should first understand visual and interaction intent, 
 technical specification internally. Existing tokens, components, package metadata, host mappings,
 and accessibility defaults should be inspected or inferred automatically.
 
+The Experience Brief confirmation is not by itself Design System Approval. Design System Approval
+requires the confirmed brief, an approved Component Specification, recorded Accessibility
+requirements, and an approved Test/Conformance Specification with completed scenario mapping.
+Only after those artifacts and an implementation plan with validation targets exist may an issue's
+implementation gate open.
+
 When a consumer needs a capability that is not provided, classify it before coding:
 
 1. Existing component composition.
@@ -131,8 +149,8 @@ Apply the narrowest gate that matches the task:
 
 | Mode | Required gate | Output before implementation |
 | --- | --- | --- |
-| `design` | Experience brief, then internal Component / Accessibility / Test Specification | Plain-language experience summary and internal design decision |
-| `build` | Approved Component Specification and mapped conformance scenarios | Host implementation plan and validation targets |
+| `design` | Experience Brief, then Component / Accessibility / Test Specification approval | Plain-language summary, internal contract packet, and approval evidence |
+| `build` | Confirmed Experience Brief, approved Component Specification, recorded Accessibility requirements, mapped Test/Conformance scenarios, implementation plan, and validation targets | Host implementation plan and validation targets |
 | `consume` | Installed package manifest, host API mapping, and usage docs | Resolved usage or explicit consumer outcome |
 | `conformance` | Component Specification, shared scenarios, and Accessibility gate | Per-host parity report or deviation record |
 | `release` | Repository/package layout, release checks, conformance report, and manifest | Publish/migration decision |
@@ -157,10 +175,33 @@ Read these references as needed:
 - [repository-and-docs.md](references/repository-and-docs.md) for package, monorepo, CI, Storybook,
   and Blazor showcase boundaries.
 
+For a GitHub-tracked Design System request, the GitHub Project Workflow skill owns the canonical
+cross-skill handoff reference at
+`workflow/skills/github-project-workflow/references/design-system-handoff.md`. Apply its
+Requirement Approval, Design System Approval, Workflow Metadata, `Ready` → `In Progress` gate,
+and mixed-Issue rules when that skill is active.
+
 ## Routing and handoff rules
 
 Read [mode-routing.md](references/mode-routing.md) when the task involves more than one mode or
 more than one repository.
+
+- If a request matches the Design System routing keywords and no current approved Component
+  Specification can be verified, `design` is mandatory; `build` is not a shortcut around
+  Experience Intake.
+- In `design`, run the design preflight first, ask no more than three unresolved plain-language
+  experience questions, and do not request token names, CSS variables, component IDs, APIs, ARIA
+  attributes, DOM structure, or test runners.
+- Before the requester confirms the Experience Brief, keep runtime implementation, tokens, CSS,
+  Blazor components, implementation branches, and implementation PRs out of scope.
+- `Issue Ready` proves only Requirement Approval. It never proves Design System Approval, even when
+  the Issue is marked ready and tests pass.
+- `build` is allowed only when the confirmed brief, approved Component Specification, recorded
+  Accessibility requirements, mapped Test/Conformance scenarios, implementation plan, and
+  validation targets are all present.
+- When one Issue contains Design System design and implementation, complete `design` before
+  `build`. If the phases are independently reviewable or too large, recommend native design and
+  implementation child issues; do not invent a lifecycle Status.
 
 - A consumer request must carry its use case, affected hosts, acceptance scenarios, and evidence;
   it must not directly redefine a shared component API.

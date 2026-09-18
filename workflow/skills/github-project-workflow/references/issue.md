@@ -146,6 +146,44 @@ Every Issue that produces a repository artifact MUST include `Review Mode: Colla
 no independent reviewer is available; the agent MUST NOT infer that mode. A no-artifact discovery
 Issue does not need this field.
 
+## Design System Workflow Metadata
+
+When an Issue or request involves Design System, design tokens, visual rules, theme, component
+contract, shared CSS, accessibility contract, conformance, or a new Design System component, add
+these fields to `Workflow Metadata` and apply
+[design-system-handoff.md](design-system-handoff.md). The agent infers the values from the request
+and available evidence; the requester does not need to choose tokens, APIs, ARIA, DOM, or test
+tools.
+
+```text
+Design System Scope: None | Design | Build | Design+Build
+Design System Phase: Not Required | Experience Intake | Contract Draft | Contract Approved
+Design System Approval: Pending | Approved
+Implementation Gate: Blocked | Open
+```
+
+Their meanings are:
+
+- `Design System Scope: None`: no shared Design System decision or artifact is involved; use the
+  ordinary workflow. `Design`, `Build`, and `Design+Build` mean design-only contract work,
+  implementation against an approved contract, or both phases in that order.
+- `Design System Phase: Not Required`: only for `Scope: None`. `Experience Intake` means the
+  experience is still being clarified, `Contract Draft` means the brief is confirmed but the
+  contract packet is not fully approved, and `Contract Approved` means the required packet is
+  approved and mapped.
+- `Design System Approval: Pending`: a required Design System artifact is not yet approved. For
+  `Scope: None` it is not applicable and does not block ordinary work. `Approved` requires the
+  confirmed Experience Brief, approved Component Specification, recorded Accessibility
+  requirements, and approved Test/Conformance Specification with completed mapping.
+- `Implementation Gate: Blocked`: a non-`None` Design System Issue cannot enter `In Progress`,
+  create an implementation branch, modify runtime code, or create an implementation PR. `Open`
+  means the current scope's prerequisites and implementation plan/validation targets are ready.
+
+`Issue Ready` remains Requirement Approval only and does not set `Design System Approval` to
+`Approved`. These metadata fields do not create or rename Project Status values. For the complete
+routing rule, design questions, mixed-Issue handling, and examples, read
+[design-system-handoff.md](design-system-handoff.md).
+
 ## Canonical Issue body
 
 Use these semantic sections in this order. The heading labels are illustrative semantic names and
@@ -205,6 +243,10 @@ None
 - Issue Role: Requirement
 - Parent Issue: None
 - Work Mode: Delivery
+- Design System Scope: None
+- Design System Phase: Not Required
+- Design System Approval: Pending
+- Implementation Gate: Open
 - Approval Source: None
 - Review Mode: Collaborative
 - Type: Feature
@@ -249,6 +291,12 @@ The following are material requirement changes and MUST return the lifecycle to 
 - scope or out-of-scope;
 - user-visible behavior; or
 - an important constraint.
+
+For a Design System request, a changed Experience Brief or any user-visible contract decision also
+invalidates the Design System Approval and Implementation Gate. Set the phase back to `Experience
+Intake` or `Contract Draft`, set approval to `Pending`, and set the gate to `Blocked`; if the change
+also changes the Issue requirement, return the Project Status to `Specifying` and obtain new
+Requirement Approval.
 
 Changing Priority alone is not a material requirement change and does not require a lifecycle
 transition. If the new rationale reveals a change to behavior, scope, acceptance criteria, or an

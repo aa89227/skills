@@ -53,6 +53,13 @@ If the request is initially unclear but does not meet a trigger, start one Issue
 Promotion after implementation has started requires a material requirement decision and explicit
 human direction.
 
+When one Requirement contains both a new or changed Design System contract and its runtime
+implementation, apply [design-system-handoff.md](design-system-handoff.md): complete `design`
+before `build`, regardless of the Issue's `Ready` status. If the design handoff and implementation
+are independently verifiable or the combined request is too large to review coherently, recommend
+a native design child Issue and implementation child Issue. Size alone does not force a split, and
+the recommendation MUST NOT introduce a `Designing` or other custom lifecycle Status.
+
 Before creating the parent, the agent MUST outline at least two meaningful child work items. If
 fewer than two exist, create one ordinary Requirement Issue and do not create a parent. If an
 existing Initiative later collapses below two children, the agent MUST NOT delete or silently

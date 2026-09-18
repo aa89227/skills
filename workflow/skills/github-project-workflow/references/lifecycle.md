@@ -32,6 +32,14 @@ task.
 - **Material requirement change** changes expected behavior, acceptance criteria, scope, a
   user-visible behavior, or an important constraint. A new implementation detail is not a
   material requirement change.
+- **Requirement Approval** is the Human approval represented by a direct `Specifying` → `Ready`
+  Project Status change for the current Issue body. It covers the user need, scope, acceptance
+  criteria, and important constraints only.
+- **Design System Approval** is a separate Human approval for the current Design System contract
+  packet: confirmed Experience Brief, approved Component Specification, recorded Accessibility
+  requirements, and approved Test/Conformance Specification with completed mapping. **`Issue Ready`
+  不等於 `Design System Contract Approved`**. Passing tests, CI, an Agent's judgment, or an
+  existing Draft PR cannot provide this approval.
 - **Implementation approval** is explicit human authorization for the current implementation,
   including all required PRs in a multi-PR Issue. In `Collaborative` mode this is a current native
   GitHub `APPROVED` review; in `Solo Maintainer` mode it is the constrained human acceptance defined
@@ -68,7 +76,7 @@ reason, exit criteria, and entry criteria in the row are all satisfied.
 | --- | --- | --- | --- |
 | `Inbox` | `Specifying` | Agent | The Issue exists and requirement work has started; no implementation is performed. |
 | `Specifying` | `Ready` | Human action required | Required specification fields are current, scope and acceptance criteria are clear, no blocking open question remains, and a human directly changes Project Status to `Ready`. The agent only verifies this evidence. |
-| `Ready` | `In Progress` | Agent | The approved specification is frozen and the approved work has actually started: implementation for `Delivery`, or the bounded research/experiment for `Research`/`Prototype`. A `Discussion` Requirement MUST change to another Work Mode before this transition. |
+| `Ready` | `In Progress` | Agent | The approved specification is frozen, the approved work has actually started, and the Design System gate check passes. For `Design System Scope: None`, ordinary lifecycle criteria are sufficient. For any non-`None` scope, `Implementation Gate: Open` is required; for `Build` or `Design+Build`, `Design System Phase: Contract Approved`, `Design System Approval: Approved`, the implementation plan, and validation targets are also required. A `Design` scope may use `In Progress` only for approved design artifacts and never as permission to run `build`. If the gate is `Blocked`, the agent MUST NOT enter `In Progress`, create an implementation branch, modify runtime code, or create an implementation PR. A `Discussion` Requirement MUST change to another Work Mode before this transition. |
 | `Ready` | `Specifying` | Agent after an identified material requirement change | Update the Issue body and invalidate the prior specification approval. |
 | `In Progress` | `In Review` | Agent | For `Delivery`, all required implementation is complete, required checks pass, all required PRs exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. During reconciliation, persisted review history for an already processed PR MAY satisfy the reviewable condition. |
 | `In Progress` | `Specifying` | Agent after an identified material requirement change | Update the Issue body before further implementation; do not preserve an obsolete approval. |
@@ -118,11 +126,13 @@ approval of the current body.
 
 ### Ready
 
-`Ready` means the specification is human-approved and frozen for the selected Work Mode. For
-`Delivery` or discovery work that produces a repository artifact, the agent MAY plan, create a
-semantic branch, and create a Draft PR, but MUST NOT start the work until it transitions to
-`In Progress`. A no-artifact discovery item does not need a branch or PR. A material requirement
-change returns to `Specifying`.
+`Ready` means Requirement Approval: the Issue specification is human-approved and frozen for the
+selected Work Mode. It does not mean that a Design System contract is approved. For a Design System
+Issue whose `Implementation Gate` is `Blocked`, the agent MUST NOT use the general planning
+permission to create an implementation branch or Draft PR; it must first complete the handoff in
+[design-system-handoff.md](design-system-handoff.md). For `Design System Scope: None`, ordinary
+`Delivery` or discovery planning rules still apply. A material requirement change returns to
+`Specifying`.
 
 ### In Progress
 
@@ -186,9 +196,12 @@ recorded reason are required. Close the Issue after the status is recorded.
 
 ## Approval validity
 
-Specification approval is valid only when a verifiable human directly changed Project Status from
-`Specifying` to `Ready` for the current Issue body. For repository-artifact implementation, approval
-is valid only when every required PR satisfies the selected Review Mode: `Collaborative` requires a
+Requirement Approval is valid only when a verifiable human directly changed Project Status from
+`Specifying` to `Ready` for the current Issue body. Design System Approval is separately valid only
+when the current Experience Brief, Component Specification, Accessibility requirements, and
+Test/Conformance Specification have verifiable Human approval and complete mapping. Neither
+approval may be inferred from the other. For repository-artifact implementation, approval is valid
+only when every required PR satisfies the selected Review Mode: `Collaborative` requires a
 verifiable human native GitHub review state of `APPROVED` for the PR's current head; `Solo
 Maintainer` requires an explicit Issue selection, a PR `Review` section containing the full current
 head SHA and `Human Review: Complete` for each required PR, all required checks and acceptance
@@ -213,11 +226,14 @@ Before every lifecycle status change, the agent MUST:
 4. Determine the intended transition and its reason.
 5. Verify that the transition is in the allowed matrix.
 6. Verify the current status exit criteria.
-7. Verify the target status entry criteria and human gate, if any.
-8. Execute the transition.
-9. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
-10. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
-11. Record any missing condition instead of transitioning; emit a checkpoint before returning
+7. For `Ready` → `In Progress`, run the Design System gate check in
+   [design-system-handoff.md](design-system-handoff.md). `Scope: None` follows the ordinary
+   path; a Design System scope with `Implementation Gate: Blocked` stops the transition.
+8. Verify the target status entry criteria and human gate, if any.
+9. Execute the transition.
+10. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
+11. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
+12. Record any missing condition instead of transitioning; emit a checkpoint before returning
     control to Human.
 
 Reading only a PR or only a Project card is insufficient evidence for a lifecycle transition.

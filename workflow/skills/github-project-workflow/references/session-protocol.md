@@ -105,11 +105,14 @@ Before ending a session, the agent MUST ensure:
 - stack base/head relationships are correct; and
 - a `Workflow Checkpoint` is emitted according to [checkpoint.md](checkpoint.md).
 
-If Delivery implementation has begun but is incomplete, keep `In Progress` and a Draft PR. If
-Research/Prototype work without a repository artifact has begun but is incomplete, keep `In
-Progress` and record the next evidence or experiment; no PR is required. If the work is still
-specifying, keep `Specifying`; if it is approved but not started, keep `Ready`. Session end does
-not justify `In Review`, `Ready to Merge`, `Done`, or `Cancelled`.
+If Delivery implementation has begun but is incomplete, keep `In Progress` and a Draft PR only
+when the applicable Design System gate was already `Open`. If a Design System gate is still
+`Blocked`, keep the Issue at its truthful pre-implementation Status, record the missing handoff
+condition, and do not create or retain a runtime implementation PR. If Research/Prototype work
+without a repository artifact has begun but is incomplete, keep `In Progress` and record the next
+evidence or experiment; no PR is required. If the work is still specifying, keep `Specifying`; if
+it is approved but not started, keep `Ready`. Session end does not justify `In Review`, `Ready to
+Merge`, `Done`, or `Cancelled`.
 
 Do not create a verbose session summary. The Issue body, Project metadata, PRs, branches, and
 verification records must contain the durable handoff information.

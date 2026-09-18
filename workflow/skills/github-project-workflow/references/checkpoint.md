@@ -60,18 +60,22 @@ affected operation when any of these conditions applies:
    SHA and completed human review, then directly set Project Status to `Ready to Merge`. For a
    Research/Prototype item with no repository artifact, tell Human to set its Project Status to
    `Ready to Merge` after reviewing the recorded result.
-3. A material requirement change is identified but the new behavior, scope, acceptance criteria,
+3. A Design System Issue has `Implementation Gate: Blocked` at `Ready` → `In Progress`. Read
+   [design-system-handoff.md](design-system-handoff.md), report the missing Experience Brief,
+   contract approval, mapping, plan, or validation target, and do not create an implementation
+   branch, runtime code, or implementation PR.
+4. A material requirement change is identified but the new behavior, scope, acceptance criteria,
    or important constraint is not explicit. Return the affected Issue to `Specifying`, update the
    canonical body with the known facts, and wait for clarification and new specification approval.
-4. Human cancellation, reparenting, replacement, or removal of Initiative work is required.
-5. A lifecycle transition is not in the allowed matrix, an entry/exit criterion is missing, or
+5. Human cancellation, reparenting, replacement, or removal of Initiative work is required.
+6. A lifecycle transition is not in the allowed matrix, an entry/exit criterion is missing, or
    the configured Project does not expose the required lifecycle values.
-6. Project, Issue, PR, or remote repository facts conflict and authorization or integration cannot
+7. Project, Issue, PR, or remote repository facts conflict and authorization or integration cannot
    be established. Do not change Status merely to hide the conflict.
-7. Unknown local changes could be overwritten, or a required Git operation would be destructive.
-8. A required permission, Project setup, native parent/sub-issue relationship, Roadmap field, or
+8. Unknown local changes could be overwritten, or a required Git operation would be destructive.
+9. A required permission, Project setup, native parent/sub-issue relationship, Roadmap field, or
    external fact is unavailable.
-9. A release version, exact Milestone, tag target, or explicit `Next Milestone` is required but
+10. A release version, exact Milestone, tag target, or explicit `Next Milestone` is required but
    has not been supplied or verified.
 
 When pausing, the agent MUST state the exact missing condition and the action that will satisfy it.
@@ -108,7 +112,7 @@ When no hard-pause condition overrides the normal path, use the following determ
 | --- | --- |
 | `Inbox` | `Agent: organize the Issue and move to Specifying when requirement work starts.` |
 | `Specifying` | `Agent: update the canonical specification`; when criteria are complete, `Human: set Project Status to Ready`. |
-| `Ready` | `Agent: begin the approved Work Mode`; change to `In Progress` only when work actually starts. |
+| `Ready` | `Agent: run the Design System gate check when scope is non-`None`; begin the approved Work Mode and change to `In Progress` only when the gate is `Open` and work actually starts. |
 | `In Progress` | `Agent: continue the approved implementation or discovery work and prepare the complete result for review.` |
 | `In Review` | `Human: review the complete result`; then provide the required approval for the selected Review Mode or discovery acceptance. |
 | `Ready to Merge` | `Agent: verify approval, checks, target branch, and integrate using the GitHub merge policy.` |

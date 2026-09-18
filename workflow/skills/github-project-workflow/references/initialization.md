@@ -61,12 +61,17 @@ Their meanings are:
 | --- | --- |
 | `Inbox` | The requirement exists but has not been formally organized. |
 | `Specifying` | The canonical requirement is being clarified and completed. |
-| `Ready` | A human has approved the current specification. |
+| `Ready` | A human has approved the current Issue requirement, scope, and acceptance criteria. For Design System work, this is Requirement Approval only; it does not approve the Design System contract. |
 | `In Progress` | Approved implementation or bounded discovery work has started. |
 | `In Review` | The complete implementation or discovery result is ready for review. |
 | `Ready to Merge` | Human approval has been obtained and the result may be integrated. |
 | `Done` | The approved result is integrated, verified, and satisfies the completion criteria. |
 | `Cancelled` | A human explicitly decided that the requirement will not proceed. |
+
+Design System phases, approvals, and implementation gates are Workflow Metadata, not additional
+Project Status values. Use [design-system-handoff.md](design-system-handoff.md) for their values and
+gate checks; do not add `Designing`, `Contract Review`, `Design Approved`, or another lifecycle
+Status.
 
 `Done` MUST NOT be used until implementation is integrated, required tests/checks pass, the remote
 target branch is verified, and acceptance criteria are satisfied. `Cancelled` requires a separate
