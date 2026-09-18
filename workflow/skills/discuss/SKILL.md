@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Discussion Mode
@@ -45,6 +45,34 @@ Investigate and discuss the request without implementing it.
 Use the runtime's structured user-input mechanism when helpful. Use it only to gather requirements
 or preferences, never to request implementation approval.
 
+## Completion and Next Step
+
+When handing control back to the user, emit these two fields in this order:
+
+```text
+STATUS: <stable status token>
+NEXT_STEP: <user-facing instruction>
+```
+
+`STATUS` is machine-readable and MUST use one of these values:
+
+- `DISCUSSION_COMPLETE`: the discussion reached a stable conclusion. This does not imply that
+  implementation is needed or authorized.
+- `IMPLEMENTATION_PLAN_READY`: the discussion produced a sufficiently specific implementation
+  direction. This does not authorize changes; a separate explicit implementation request is still
+  required.
+- `NEEDS_USER_INPUT`: a material decision remains unresolved and the agent is asking a focused
+  question before the discussion can conclude.
+
+`NEXT_STEP` is for the user, not the workflow parser. It MUST:
+
+- explicitly state what the user needs to do, if anything;
+- say clearly when no action is required; and
+- be written in the user's language, following an explicit language preference when provided.
+
+Do not use `READY_FOR_IMPLEMENTATION`; it conflates a completed discussion with implementation
+readiness and authorization. Do not treat `NEXT_STEP` as implementation authorization either.
+
 ## Authorization Boundary
 
 Treat every answer to an agent-initiated question as requirement input, never as authorization to
@@ -58,11 +86,15 @@ After every answer to a clarification question:
 3. Do not make changes or perform actions with side effects.
 4. Stop after presenting the updated discussion state.
 
-When no material questions remain, present the final proposed direction and end the response with
-this exact standalone line:
+When the discussion reaches a stable conclusion, present the final proposed direction and end the
+response with `STATUS` followed by `NEXT_STEP`. Use `DISCUSSION_COMPLETE` for a discussion that
+does not produce an implementation plan, and use `IMPLEMENTATION_PLAN_READY` only when a concrete
+implementation direction has been agreed. If a material question remains, use `NEEDS_USER_INPUT`
+and ask the focused question in the user's language.
 
 ```text
-STATUS: READY_FOR_IMPLEMENTATION
+STATUS: DISCUSSION_COMPLETE
+NEXT_STEP: <user-facing instruction in the user's language>
 ```
 
 Do not ask whether implementation should begin in that response. Implementation is authorized only
