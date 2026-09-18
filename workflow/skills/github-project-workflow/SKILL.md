@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.4"
+  version: "1.5"
   tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
@@ -140,13 +140,26 @@ The following are the workflow's human approval gates:
   result by directly setting its Project Status to `Ready to Merge`.
 
 Silence, lack of comments, passing CI, passing tests, an agent's own review, another agent's
-opinion, an existing PR, or completed code MUST NOT be treated as approval. For this workflow,
-specification approval is a human Project Status change to `Ready`; Delivery implementation
-approval is a current native GitHub `APPROVED` review on every required PR; and no-artifact
-discovery approval is a human Project Status change to `Ready to Merge` after the recorded result
-is reviewable. The human action/review must be verifiable and apply to the current specification
-or implementation/result. `Cancelled` is not an approval gate, but it still requires a separate
-explicit human cancellation decision as defined in [references/lifecycle.md](references/lifecycle.md).
+opinion, an existing PR, or completed code MUST NOT be treated as approval. Every Issue that
+produces a repository artifact MUST record `Review Mode: Collaborative` or `Review Mode: Solo
+Maintainer` in its Workflow Metadata; `Collaborative` is the default, and the agent MUST NOT infer
+or select `Solo Maintainer` from repository ownership, missing reviewers, or an unavailable reviewer.
+
+In `Collaborative` mode, repository-artifact implementation approval is a current native GitHub
+`APPROVED` review from a human on every required PR. In `Solo Maintainer` mode, the PR author cannot
+create a native approval for their own PR, so the workflow uses a constrained human acceptance path:
+every required PR records the selected mode, the full current head SHA, and a completed human review,
+all required checks and acceptance criteria are complete, and a human directly changes Project Status
+from `In Review` to `Ready to Merge` after reviewing the current implementation. The agent verifies
+the human actor, the current head, and the remaining readiness conditions; it MUST NOT create a fake
+review or make that human status change itself. Repository branch protection remains authoritative
+and this workflow MUST NOT silently bypass a native-review requirement enforced by the repository.
+
+For a no-artifact `Research`/`Prototype` item, discovery approval remains a human Project Status
+change to `Ready to Merge` after the recorded result is reviewable. The human action/review must be
+verifiable and apply to the current specification or implementation/result. `Cancelled` is not an
+approval gate, but it still requires a separate explicit human cancellation decision as defined in
+[references/lifecycle.md](references/lifecycle.md).
 For an `Initiative` parent, child approvals and accepted discovery results satisfy the aggregate
 gate; the parent has no implementation PR of its own.
 

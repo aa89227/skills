@@ -26,7 +26,7 @@ Read the Primary Issue's:
 - constraints and edge cases;
 - open questions and their blocking state; and
 - Release Note; and
-- selected Issue language, Issue Role, Parent Issue, Work Mode, and Approval Source from
+- selected Issue language, Issue Role, Parent Issue, Work Mode, Approval Source, and Review Mode from
   `Workflow Metadata`.
 
 If the Issue body is stale, incomplete, or contradicts current human decisions, update the body or
@@ -46,7 +46,7 @@ Find every related PR using the exact `Primary Issue: #<number>` convention and 
 relationship. For each PR, read:
 
 - Draft or Ready state;
-- human reviews and approval validity;
+- selected Review Mode, human reviews or solo-maintainer review records, and approval validity;
 - CI/check results;
 - base and head branches;
 - stack dependency and ordering; and
@@ -77,8 +77,9 @@ allowed transition only after the evidence and approval conditions are satisfied
 
 ## Required reconciliation cases
 
-- `Project = In Progress` while code exists in the target branch: verify whether human approval
-  existed, how integration occurred, which commit/tree is present, whether criteria pass, and
+- `Project = In Progress` while code exists in the target branch: verify whether valid human
+  approval under the selected Review Mode existed, how integration occurred, which commit/tree is
+  present, whether criteria pass, and
   whether the push was authorized. If all required review history, persisted approval, target
   content, and final verification exist, replay the allowed historical path through `In Review` →
   `Ready to Merge` → `Done`; never use a direct `In Progress` → `Done` shortcut. Otherwise do not

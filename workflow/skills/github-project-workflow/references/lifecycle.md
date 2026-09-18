@@ -33,12 +33,31 @@ task.
   user-visible behavior, or an important constraint. A new implementation detail is not a
   material requirement change.
 - **Implementation approval** is explicit human authorization for the current implementation,
-  including all required PRs in a multi-PR Issue. A bot review or agent statement is not approval.
+  including all required PRs in a multi-PR Issue. In `Collaborative` mode this is a current native
+  GitHub `APPROVED` review; in `Solo Maintainer` mode it is the constrained human acceptance defined
+  below. A bot review or agent statement is not approval.
 - **Required implementation** is every code, test, documentation, configuration, and migration
   change needed to satisfy the current acceptance criteria. A large implementation MAY use
   multiple PRs without creating multiple Issues.
 - **Mechanical integration adjustment** changes commit/branch mechanics or resolves a conflict
   without changing approved behavior. If behavior changes, it is implementation work.
+
+## Review modes
+
+Every Issue that produces a repository artifact MUST record one of these values in Workflow
+Metadata:
+
+| Review Mode | Use when | Implementation approval evidence |
+| --- | --- | --- |
+| `Collaborative` | Default; an independent reviewer can review the work | A current native GitHub `APPROVED` review from a human on every required PR |
+| `Solo Maintainer` | The human explicitly declares that the PR author is the sole maintainer/reviewer and no independent reviewer is available | A current-head review record on every required PR, all required checks and acceptance criteria complete, and a human directly changing Project Status from `In Review` to `Ready to Merge` |
+
+The agent MUST NOT infer or select `Solo Maintainer` because a repository appears personal, a PR has
+no reviewers, or a review is inconvenient. The human must explicitly select it for the current Issue.
+The solo-maintainer review record is the PR `Review` section with `Review Mode: Solo Maintainer`,
+the full `Reviewed Commit` SHA, and `Human Review: Complete`.
+Solo Maintainer mode does not create a native self-approval and does not bypass repository branch
+protection. A material implementation change invalidates the review record and the status acceptance.
 
 ## Allowed transition matrix
 
@@ -55,7 +74,7 @@ reason, exit criteria, and entry criteria in the row are all satisfied.
 | `In Progress` | `Specifying` | Agent after an identified material requirement change | Update the Issue body before further implementation; do not preserve an obsolete approval. |
 | `In Review` | `In Progress` | Agent | Human or CI feedback requires implementation work, or current approval/readiness is invalidated. Record feedback and the next verification. |
 | `In Review` | `Specifying` | Agent after an identified material requirement change | The feedback changes behavior, acceptance criteria, scope, or an important constraint. Update the Issue body. |
-| `In Review` | `Ready to Merge` | Agent after human PR approval, or Human discovery acceptance | Every required Delivery PR has a current native GitHub `APPROVED` review from a human, or a Research/Prototype item with no repository artifact has a direct Human acceptance of its recorded result; all required work is covered and no material change is pending. |
+| `In Review` | `Ready to Merge` | Agent after valid Collaborative approval; Human action required for Solo Maintainer or no-artifact discovery acceptance | Every required artifact PR satisfies the selected Review Mode: a current native GitHub `APPROVED` review in `Collaborative` mode, or a current-head solo-maintainer review record in `Solo Maintainer` mode followed by a direct human Project Status change to `Ready to Merge`; or a Research/Prototype item with no repository artifact has a direct Human acceptance of its recorded result. All required work is covered and no material change is pending. |
 | `Ready to Merge` | `In Progress` | Agent | A material implementation change is required, approval is no longer valid, or integration reveals a behavior change that must be implemented. Re-verify and re-review. |
 | `Ready to Merge` | `Specifying` | Agent after an identified material requirement change | Integration or review reveals that the requirement itself must change. Update the Issue body and obtain new specification approval. |
 | `Ready to Merge` | `Done` | Agent | Approved implementation is integrated into the intended remote target branch and all Done criteria below are true. |
@@ -120,15 +139,20 @@ Move to `In Review` only when the whole Issue—not merely one PR—is reviewabl
 `In Review` means every required implementation slice, or every required discovery result, is
 ready for human review. The agent MAY answer questions and make review-driven changes, but MUST
 NOT self-approve or infer approval from silence, CI, tests, or another agent. Implementation
-feedback returns to `In Progress`; a material requirement change returns to `Specifying`. Human
-approval of the current implementation or discovery result permits `Ready to Merge`.
+feedback returns to `In Progress`; a material requirement change returns to `Specifying`. In
+`Collaborative` mode, human approval means a current native `APPROVED` review on every required PR.
+In `Solo Maintainer` mode, human acceptance means that every required PR records the current head
+that was reviewed and a human directly changes Project Status to `Ready to Merge` after reviewing
+the implementation. Human approval or acceptance of the current implementation or discovery result
+permits `Ready to Merge`.
 
 ### Ready to Merge
 
-`Ready to Merge` means the current Delivery implementation has human approval, or a no-artifact
-discovery result has Human acceptance, and the item is eligible for integration or closure. No
-material implementation change may be introduced here. A mechanical rebase or conflict resolution
-MAY remain in this status only when approved behavior is preserved and the approval remains valid.
+`Ready to Merge` means the current repository-artifact implementation has valid human approval
+under its selected Review Mode, or a no-artifact discovery result has Human acceptance, and the item
+is eligible for integration or closure. No material implementation change may be introduced here.
+A mechanical rebase or conflict resolution MAY remain in this status only when approved behavior is
+preserved and the approval remains valid.
 If the platform dismisses approval or behavior changes, use
 `Ready to Merge` → `In Progress` and repeat review.
 
@@ -136,8 +160,9 @@ If the platform dismisses approval or behavior changes, use
 
 The agent MUST NOT set `Done` until all of the following are true:
 
-1. Current human implementation approval exists for Delivery work, or current Human acceptance of
-   the recorded result exists for a Research/Prototype item with no repository artifact.
+1. Current human implementation approval exists for repository-artifact work under its selected
+   Review Mode, or current Human acceptance of the recorded result exists for a Research/Prototype
+   item with no repository artifact.
 2. Every required PR or stack slice has been integrated or honestly reconciled as locally
    integrated. A discovery item with no repository artifact has no PR integration requirement.
 3. The remote intended target branch contains the complete approved result for Delivery work or a
@@ -162,16 +187,20 @@ recorded reason are required. Close the Issue after the status is recorded.
 ## Approval validity
 
 Specification approval is valid only when a verifiable human directly changed Project Status from
-`Specifying` to `Ready` for the current Issue body. Implementation approval is valid only when every
-required Delivery PR has a verifiable human native GitHub review state of `APPROVED` for its current
-head. For a Research/Prototype item with no repository artifact, acceptance is valid only when a
-verifiable human directly changes its Project Status from `In Review` to `Ready to Merge` after the
-recorded result is complete. Chat-only statements, comments without the native approval state,
-unidentifiable actors, or stale reviews are insufficient. The agent MUST treat approval as invalid
-after a material specification or implementation change. A mechanical rebase may retain approval
-only when the resulting behavior/diff is demonstrably equivalent and the hosting platform still
-considers the approval valid. If either condition fails, return to `In Progress` and obtain review
-again.
+`Specifying` to `Ready` for the current Issue body. For repository-artifact implementation, approval
+is valid only when every required PR satisfies the selected Review Mode: `Collaborative` requires a
+verifiable human native GitHub review state of `APPROVED` for the PR's current head; `Solo
+Maintainer` requires an explicit Issue selection, a PR `Review` section containing the full current
+head SHA and `Human Review: Complete` for each required PR, all required checks and acceptance
+criteria complete, and a verifiable human directly changing Project Status from `In Review` to
+`Ready to Merge` after that review. For a
+Research/Prototype item with no repository artifact, acceptance is valid only when a verifiable
+human directly changes its Project Status from `In Review` to `Ready to Merge` after the recorded
+result is complete. Chat-only statements, comments without the required evidence, unidentifiable
+actors, or stale reviews are insufficient. The agent MUST treat approval as invalid after a material
+specification or implementation change. A mechanical rebase may retain approval only when the
+resulting behavior/diff is demonstrably equivalent and the hosting platform still considers the
+approval valid. If either condition fails, return to `In Progress` and obtain review again.
 
 ## Transition protocol
 
@@ -201,7 +230,8 @@ The agent MAY replay the missing allowed transitions in order when evidence exis
 
 1. Required implementation and checks are complete.
 2. PR review history proves the implementation was reviewable.
-3. Persisted human implementation approval covers the current implementation.
+3. Persisted human implementation approval under the selected Review Mode covers the current
+   implementation.
 4. The remote target branch contains the approved result.
 5. Acceptance criteria and final verification pass.
 

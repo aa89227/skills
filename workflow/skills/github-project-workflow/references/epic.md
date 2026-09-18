@@ -126,7 +126,7 @@ lifecycle statuses. They MUST NOT create `Discussing`, `Researching`, `Prototypi
 - `In Progress`: conduct the research or experiment; update findings in the Issue body.
 - `In Review`: the evidence and conclusion are ready for human review.
 - `Ready to Merge`: human accepts the discovery result. If the result has a repository artifact,
-  use a PR and its native `APPROVED` review; if it has no artifact, the human may directly set the
+  use a PR and its selected Review Mode; if it has no artifact, the human may directly set the
   child Project Status to `Ready to Merge` after reviewing the recorded result.
 - `Done`: the accepted findings are recorded in the child and parent, and any repository artifact
   has been integrated into its explicitly declared target. A discovery item is not release-eligible
@@ -148,7 +148,7 @@ The parent Initiative uses the same formal statuses, but its criteria are aggreg
 | `Ready` | Human approved the parent scope and current child decomposition. This does not authorize implementation of a child whose body changed afterward. |
 | `In Progress` | At least one child is actively researching, prototyping, or delivering; the parent remains here while required children remain unfinished. |
 | `In Review` | Every required child is reviewable, `Ready to Merge`, or `Done`; the parent-level outcome and roadmap placement can be reviewed. |
-| `Ready to Merge` | Every required Delivery child has current native PR approval or is `Done`, every discovery child has an accepted result, and the aggregate outcome is ready for integration/closure. |
+| `Ready to Merge` | Every required Delivery child has valid approval under its selected Review Mode or is `Done`, every discovery child has an accepted result, and the aggregate outcome is ready for integration/closure. |
 | `Done` | Every required child is `Done`, all required delivery results are in the remote target, discovery results are durable, and the parent scope is complete. |
 | `Cancelled` | Human cancelled the initiative. Child Issues are not auto-cancelled; Human must decide whether each child is cancelled, reparented, or retained. |
 

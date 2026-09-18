@@ -37,6 +37,12 @@ Primary Issue: #123
 
 - <command/check and result>
 
+## Review
+
+- Review Mode: Collaborative
+- Reviewed Commit: None
+- Human Review: Pending
+
 ## Stack
 
 - Stack: Single
@@ -58,9 +64,17 @@ GitHub-native base/head branch relationship is authoritative.
 - Move the Issue to `In Review` only when all required implementation slices and PRs are reviewable,
   required checks pass, known limitations are recorded, and the Issue release note matches the
   actual result.
-- Human approval for `In Review` → `Ready to Merge` MUST be the native GitHub `APPROVED` review
-  state on every required PR in the Issue, including every required stack slice. One approved PR
-  does not approve an incomplete stack.
+- In `Collaborative` mode, human approval for `In Review` → `Ready to Merge` MUST be the native
+  GitHub `APPROVED` review state on every required PR in the Issue, including every required stack
+  slice. One approved PR does not approve an incomplete stack.
+- In `Solo Maintainer` mode, native self-approval is impossible and MUST NOT be fabricated. Every
+  required PR MUST record `Review Mode: Solo Maintainer` and the full current head SHA in its
+  `Review` section. After reviewing the current implementation, checks, acceptance criteria, and
+  limitations, the human maintainer MUST change `Human Review: Pending` to `Human Review: Complete`
+  and directly change the Issue's Project Status from `In Review` to `Ready to Merge`. The agent
+  MUST verify that the status change was made by a human after the recorded SHA was reviewed and
+  that no material change is pending. A chat message, agent status update, or passing checks alone
+  is insufficient.
 - Review comments, requested changes, CI failure, and test failure are signals. They do not create
   lifecycle statuses. Implementation work routes to `In Progress`; a material requirement change
   routes to `Specifying`.
@@ -80,8 +94,10 @@ and a security-related finding is not automatically high Priority. If a finding 
 tracking, create or update the relevant Issue and apply [priority.md](priority.md), including a
 reason and evidence. Priority changes do not bypass lifecycle or human approval gates.
 
-The agent MUST NOT self-approve, merge before human implementation approval, or infer approval from
-silence, passing checks, or another agent.
+The agent MUST NOT self-approve, create or infer a native self-approval, merge before valid human
+implementation approval, or infer approval from silence, passing checks, or another agent. If
+repository branch protection still requires a native approval that a solo maintainer cannot provide,
+report that repository policy blocker; do not bypass it silently.
 
 ## Multiple and stacked PRs
 

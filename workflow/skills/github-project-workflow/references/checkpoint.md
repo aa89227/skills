@@ -54,10 +54,12 @@ affected operation when any of these conditions applies:
 
 1. `Specifying` → `Ready` needs current specification approval. Tell Human to change the Issue's
    Project Status to `Ready` after reviewing the canonical Issue body.
-2. `In Review` → `Ready to Merge` needs implementation approval. Tell Human to submit a native
-   GitHub `APPROVED` review on every required Delivery PR. For a Research/Prototype item with no
-   repository artifact, tell Human to set its Project Status to `Ready to Merge` after reviewing
-   the recorded result.
+2. `In Review` → `Ready to Merge` needs implementation approval. In `Collaborative` mode, tell
+   Human to submit a native GitHub `APPROVED` review on every required artifact PR. In `Solo
+   Maintainer` mode, tell Human to review the current head of every required PR, record the full
+   SHA and completed human review, then directly set Project Status to `Ready to Merge`. For a
+   Research/Prototype item with no repository artifact, tell Human to set its Project Status to
+   `Ready to Merge` after reviewing the recorded result.
 3. A material requirement change is identified but the new behavior, scope, acceptance criteria,
    or important constraint is not explicit. Return the affected Issue to `Specifying`, update the
    canonical body with the known facts, and wait for clarification and new specification approval.
@@ -94,8 +96,9 @@ still in scope. A checkpoint is a progress report, not an implicit request for c
 
 The agent MUST NOT treat a chat message such as `approved`, `開始實作`, or `merge` as a replacement
 for the configured GitHub approval evidence. A chat instruction MAY authorize an otherwise allowed
-operation, but `Specifying` → `Ready` still requires the human Project Status change and Delivery
-implementation approval still requires current native `APPROVED` reviews.
+operation, but `Specifying` → `Ready` still requires the human Project Status change and
+repository-artifact implementation approval still requires either current native `APPROVED` reviews
+in `Collaborative` mode or the documented human status acceptance in `Solo Maintainer` mode.
 
 ## Status-specific next actions
 
@@ -107,7 +110,7 @@ When no hard-pause condition overrides the normal path, use the following determ
 | `Specifying` | `Agent: update the canonical specification`; when criteria are complete, `Human: set Project Status to Ready`. |
 | `Ready` | `Agent: begin the approved Work Mode`; change to `In Progress` only when work actually starts. |
 | `In Progress` | `Agent: continue the approved implementation or discovery work and prepare the complete result for review.` |
-| `In Review` | `Human: review the complete result`; then provide the required native approval or discovery acceptance. |
+| `In Review` | `Human: review the complete result`; then provide the required approval for the selected Review Mode or discovery acceptance. |
 | `Ready to Merge` | `Agent: verify approval, checks, target branch, and integrate using the GitHub merge policy.` |
 | `Done` | `None`; terminal. Close the Issue if not already closed. |
 | `Cancelled` | `None`; terminal. Preserve the cancellation reason and history. |

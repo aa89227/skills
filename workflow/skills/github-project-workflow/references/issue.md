@@ -140,6 +140,11 @@ Date. Do not invent a date, Milestone, or Priority commitment.
 Use the Project's existing `Blocked`, `Blocked By`, and `Unblocking Condition` fields when
 available. Otherwise use the `Workflow Metadata` block below. Keep the metadata truthful; a block
 does not change lifecycle Status.
+Every Issue that produces a repository artifact MUST include `Review Mode: Collaborative` or
+`Review Mode: Solo Maintainer`. Use `Collaborative` by default. A human may explicitly select
+`Solo Maintainer` only when the PR author is the sole maintainer/reviewer for the current work and
+no independent reviewer is available; the agent MUST NOT infer that mode. A no-artifact discovery
+Issue does not need this field.
 
 ## Canonical Issue body
 
@@ -201,6 +206,7 @@ None
 - Parent Issue: None
 - Work Mode: Delivery
 - Approval Source: None
+- Review Mode: Collaborative
 - Type: Feature
 - Priority: Untriaged
 - Priority Rationale: None
