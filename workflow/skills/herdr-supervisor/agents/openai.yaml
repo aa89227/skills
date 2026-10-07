@@ -1,0 +1,7 @@
+interface:
+  display_name: "HERDR Supervisor"
+  short_description: "Dispatch named agents through HERDR"
+  default_prompt: "Use $herdr-supervisor to dispatch this task through a named HERDR agent."
+
+policy:
+  allow_implicit_invocation: false
