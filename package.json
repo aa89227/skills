@@ -1,0 +1,14 @@
+{
+  "name": "aa89227-skills",
+  "private": true,
+  "description": "Reusable agent skills for Claude Code, Codex, and the pi coding agent.",
+  "keywords": ["pi-package"],
+  "pi": {
+    "skills": [
+      "./csharp-best-practices/skills",
+      "./git-operations/skills",
+      "./workflow/skills",
+      "./design-system/skills"
+    ]
+  }
+}

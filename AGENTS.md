@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository publishes the same reusable skills through two plugin formats: Claude Code and Codex.
+This repository publishes the same reusable skills through Claude Code and Codex plugin formats, and exposes the plugin skill directories as a Pi coding agent package.
 
 ## Project Overview
 
@@ -27,6 +27,7 @@ ambiguous or conflicting, or exact wording must be verified.
 
 ~~~
 skills/
+├── package.json             # Pi package manifest
 ├── .claude-plugin/
 │   └── marketplace.json       # Claude Code marketplace index
 ├── .agents/
@@ -40,7 +41,11 @@ skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── .codex-plugin/plugin.json
 │   └── skills/[skill-name]/SKILL.md
-└── workflow/
+├── workflow/
+│   ├── .claude-plugin/plugin.json
+│   ├── .codex-plugin/plugin.json
+│   └── skills/[skill-name]/SKILL.md
+└── design-system/
     ├── .claude-plugin/plugin.json
     ├── .codex-plugin/plugin.json
     └── skills/[skill-name]/SKILL.md
@@ -54,8 +59,17 @@ Every plugin directory that supports both hosts keeps a paired manifest:
 | --- | --- | --- |
 | Claude Code | .claude-plugin/plugin.json | Claude Code plugin metadata and version |
 | Codex | .codex-plugin/plugin.json | Codex plugin metadata and version |
+| Pi coding agent | package.json (root) | Pi package manifest; `pi.skills` exposes plugin skill roots |
 
 Keep the paired manifests aligned for the plugin name, supported skill set, and release version. A plugin version change must be applied to both manifests.
+
+## Pi Package Manifest
+
+The root `package.json` is the Pi package entrypoint. Its `pi.skills` array must list each plugin's `skills/` directory so `pi install git:github.com/aa89227/skills` exposes the same source-of-truth skills. Keep paths relative to the repository root and update the array when a plugin skill root is added, removed, or renamed. Do not duplicate skills under `.pi/skills` or `.agents/skills`.
+
+Pi installs this repository as a Git package. It reads the root `package.json` `pi` manifest; it does not use the `version` fields in `.claude-plugin/plugin.json` or `.codex-plugin/plugin.json` to resolve the package. A root `package.json` `version` is not required for this Git install, so do not add a synthetic aggregate version solely for Pi. Keep plugin versions synchronized only for their Claude Code and Codex manifests.
+
+`pi install git:github.com/aa89227/skills` is intentionally branch-based and not reproducibly pinned. To pin a Git tag or commit, use `pi install git:github.com/aa89227/skills@<tag-or-commit>`; Pi updates a pinned package without moving it to another ref. The unqualified source may move when the repository's default branch is updated. Pi writes personal installs to its agent settings by default; `-l`/`--local` opts into a project-local `.pi/settings.json`. Do not add `.pi/settings.json` merely to make this repository installable.
 
 ## Marketplace Indexes
 
@@ -74,6 +88,7 @@ When changing a plugin:
 2. Keep their versions synchronized.
 3. Update both marketplace indexes if the plugin set or source path changes.
 4. Validate the edited JSON files and the affected skill structure.
+5. Keep the root `package.json` `pi.skills` array aligned with plugin skill roots when adding, removing, or renaming a plugin.
 
 ## Skill Format
 

@@ -1,13 +1,13 @@
 # Skills
 
-A personal collection of Claude Code skill plugins.
+A personal collection of reusable skill plugins for Claude Code, Codex, and the pi coding agent.
 
 > **⚠️ Personal Use Only**
 > This repository is maintained for my own use. If you find something useful, feel free to fork it. I make no guarantees about updates, maintenance, or breaking changes.
 
 ## About
 
-This repository contains reusable skill plugins for [Claude Code](https://claude.ai/code), providing specialized knowledge and workflows for various development tasks.
+This repository contains reusable skill plugins for [Claude Code](https://claude.ai/code), Codex, and the pi coding agent, providing specialized knowledge and workflows for various development tasks.
 
 ## Available Plugins
 
@@ -43,10 +43,21 @@ Design System workflow skills for:
 2. Follow Claude Code plugin installation instructions
 3. Configure individual plugins as needed
 
+## Pi coding agent
+
+The repository is also installable as a Pi package:
+
+```bash
+pi install git:github.com/aa89227/skills
+```
+
+After installation, invoke a skill explicitly with `/skill:<skill-name>`, for example `/skill:ascii-flowchart`.
+
 ## Structure
 
 Each plugin follows this convention:
 ```
+package.json                 # Pi package manifest
 plugin-name/
 ├── .claude-plugin/
 │   └── plugin.json      # Plugin manifest
