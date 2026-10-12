@@ -1,4 +1,4 @@
 interface:
-  display_name: "Ascii Flowchart"
-  short_description: "Create readable terminal ASCII flowcharts"
-  default_prompt: "Use $ascii-flowchart to turn this process into a readable ASCII flowchart."
+  display_name: "ASCII Diagram"
+  short_description: "Create readable terminal ASCII diagrams"
+  default_prompt: "Use $ascii-flowchart to turn this request into a readable ASCII diagram."

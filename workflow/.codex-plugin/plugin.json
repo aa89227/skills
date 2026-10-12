@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "version": "2.16.0",
-  "description": "Portable workflow modes, readable ASCII flowcharts, Git utilities, HERDR-based agent dispatch, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.17.0",
+  "description": "Portable workflow modes, readable ASCII diagrams including flowcharts, architecture maps, dependency graphs, and more, Git utilities, HERDR-based agent dispatch, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
   "author": {
     "name": "aa89227",
     "email": "aa89227@gmail.com",
@@ -19,6 +19,7 @@
       "Write a user manual for this feature aimed at non-engineers"
     ],
     "capabilities": [
+      "Produce readable terminal ASCII diagrams, including flowcharts, architecture diagrams, and dependency maps",
       "Constrain the agent to read-only or discussion-only behavior",
       "Produce verified, self-reviewed documentation and work summaries",
       "Manage ticket-scoped git worktrees, external repo clones, and HERDR agent dispatch",
