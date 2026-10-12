@@ -1,15 +1,16 @@
 ---
 name: discuss
 description: |
-  Enter discussion mode to investigate context, clarify requirements, and compare approaches
-  without making changes. Remain read-only until the discussion is complete and the user sends
-  a separate, explicit implementation instruction. Use for "discuss", "let's discuss",
-  "discussion mode", "don't change anything yet", "just talk", "think together", "討論一下",
-  or "先不要改".
+  Enter discussion mode to investigate context, clarify requirements, compare approaches, and
+  preserve material decisions in repository decision records while leaving implementation and
+  external state unchanged. Remain read-only for all other changes until the discussion is
+  complete and the user sends a separate, explicit implementation instruction. Use for
+  "discuss", "let's discuss", "discussion mode", "don't change anything yet", "just talk",
+  "think together", "討論一下", or "先不要改".
 license: MIT
 metadata:
   author: aa89227
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Discussion Mode
@@ -23,24 +24,74 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-Investigate and discuss the request without implementing it.
+Investigate and discuss the request without implementing it. Discussion mode may persist a
+decision record as a narrowly scoped side effect; it must not modify implementation files,
+issues, services, or other external state.
 
 ## Safety Boundary
 
-1. Do not create, edit, move, or delete files.
-2. Do not run commands that change repository, system, service, or external state.
-3. Use only read-only inspection and research while gathering context.
-4. If the runtime provides a persistent read-only, planning, or discussion mode, use it as an
+1. Do not create, edit, move, or delete implementation files.
+2. When an applicable decision-record policy enables recording, create or update only the
+   configured record file and its parent directory. A session creates one new record unless the
+   user explicitly asks to resume an existing in-progress record.
+3. Do not write an `AGENTS.md` or other instruction file until the user explicitly confirms the
+   first-use policy setup. That confirmation permits only the configured decision-record policy
+   write, never code changes or external mutations.
+4. Do not run commands that change services, issue trackers, or other external state.
+5. Use read-only inspection and research for all other repository work.
+6. If the runtime provides a persistent read-only, planning, or discussion mode, use it as an
    additional safeguard. Do not depend on product-specific modes or tool names for correctness.
+7. If a configured record cannot be written, report the failure and do not claim that it was
+   saved. Continue the discussion only if doing so does not misrepresent persistence.
+
+## Decision-Record Policy
+
+Resolve the policy before recording any material decision. Apply the first applicable rule:
+
+1. An explicit instruction for the current discussion.
+2. The nearest applicable repository `AGENTS.md` rule, or an instruction file explicitly named by
+   that rule.
+3. The built-in defaults below, after the one-time first-use setup question.
+
+The built-in defaults are:
+
+- recording enabled;
+- directory `docs/decision-records/` relative to the repository root;
+- filename `DR-{id}.md`, using the next numeric ID with at least three digits (`DR-001.md`);
+- one directory with `type: engineering`, `type: business`, or `type: mixed`;
+- incremental updates during the discussion;
+- both engineering and business decisions may be recorded in the same record.
+
+If no policy exists, ask one compact setup question before the first write. Offer the defaults,
+a custom directory or policy, disabled recording, or a session-only choice. Ask whether the
+selection should be persisted. If the user confirms persistence, append the policy to the nearest
+`AGENTS.md`; if none exists, create a repository-root `AGENTS.md` as part of that confirmed
+setup. Do not overwrite unrelated instructions.
+
+The persisted rule must say not to ask again during ordinary discussions. Re-ask only when the
+policy is missing, invalid, ambiguous, contradictory, the configured path is unavailable, or the
+user explicitly requests reconfiguration. A persisted disabled policy means do not create a
+record and do not ask again. A session-only choice ends with the session and may be requested
+again in a later session.
+
+When recording is enabled or being configured, read
+[references/decision-records.md](references/decision-records.md) before creating or updating a
+record.
 
 ## Discussion Workflow
 
 1. Inspect relevant context without making changes.
-2. Summarize the current understanding, including constraints and consequential unknowns.
-3. Ask focused clarification questions only when their answers affect the decision.
-4. Compare viable approaches and explain their trade-offs, risks, and assumptions.
-5. Recommend an approach when the available evidence supports one.
-6. Continue until no material decisions remain unresolved.
+2. Resolve the decision-record policy and, when enabled, allocate the next record ID and create an
+   initial `in-progress` record containing the request and current context.
+3. Summarize the current understanding, including constraints and consequential unknowns.
+4. Ask focused clarification questions only when their answers affect the decision.
+5. After each material decision, rejected alternative, or consequential unresolved question,
+   update the record in place. Keep the record concise and current rather than copying the chat
+   transcript.
+6. Compare viable approaches and explain their trade-offs, risks, and assumptions.
+7. Recommend an approach when the available evidence supports one.
+8. Continue until no material decisions remain unresolved, or clearly mark the record as proposed,
+   deferred, no-decision, or abandoned.
 
 Use the runtime's structured user-input mechanism when helpful. Use it only to gather requirements
 or preferences, never to request implementation approval.
@@ -83,7 +134,8 @@ After every answer to a clarification question:
 
 1. Update the current understanding.
 2. Explain the resulting decision or remaining trade-off.
-3. Do not make changes or perform actions with side effects.
+3. If recording is enabled, persist the updated decision record; make no other repository or
+   external changes.
 4. Stop after presenting the updated discussion state.
 
 When the discussion reaches a stable conclusion, present the final proposed direction and end the

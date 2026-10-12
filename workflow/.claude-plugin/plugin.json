@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "description": "Portable workflow modes, readable ASCII diagrams including flowcharts, architecture maps, dependency graphs, and more, Git utilities, HERDR-based agent dispatch, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
-  "version": "2.17.0",
+  "description": "Portable workflow modes, readable ASCII diagrams including flowcharts, architecture maps, dependency graphs, and more, Git utilities, HERDR-based agent dispatch, deterministic GitHub Project development workflows, and durable discussion decision records for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.18.0",
   "author": {
     "name": "aa89227"
   }

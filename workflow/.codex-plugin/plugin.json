@@ -1,7 +1,7 @@
 {
   "name": "workflow",
-  "version": "2.17.0",
-  "description": "Portable workflow modes, readable ASCII diagrams including flowcharts, architecture maps, dependency graphs, and more, Git utilities, HERDR-based agent dispatch, and deterministic GitHub Project development workflows for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
+  "version": "2.18.0",
+  "description": "Portable workflow modes, readable ASCII diagrams including flowcharts, architecture maps, dependency graphs, and more, Git utilities, HERDR-based agent dispatch, deterministic GitHub Project development workflows, and durable discussion decision records for initialization, controlled investigation, discussion, initiative decomposition, roadmap planning, priority planning, checkpoint reporting, documentation, handoff, review, integration, and release.",
   "author": {
     "name": "aa89227",
     "email": "aa89227@gmail.com",
@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "Workflow and GitHub Development",
     "shortDescription": "Workflow modes, Git utilities, and GitHub Project development lifecycle.",
-    "longDescription": "Workflow-control skills for readable terminal ASCII flowcharts, HERDR-based named-agent dispatch, GitHub Project initialization, read-only investigation, discussion, direct answers, summaries, verified user manuals, external repository inspection, detached-HEAD checkouts, ticket-scoped worktrees, automatic GitHub initiative decomposition, roadmap planning, priority planning, checkpoint reporting, and deterministic GitHub Issue/Project/PR/release handoffs.",
+    "longDescription": "Workflow-control skills for readable terminal ASCII flowcharts, HERDR-based named-agent dispatch, GitHub Project initialization, read-only investigation, discussion with durable decision records, direct answers, summaries, verified user manuals, external repository inspection, detached-HEAD checkouts, ticket-scoped worktrees, automatic GitHub initiative decomposition, roadmap planning, priority planning, checkpoint reporting, and deterministic GitHub Issue/Project/PR/release handoffs.",
     "developerName": "aa89227",
     "category": "Development",
     "defaultPrompt": [
@@ -20,7 +20,7 @@
     ],
     "capabilities": [
       "Produce readable terminal ASCII diagrams, including flowcharts, architecture diagrams, and dependency maps",
-      "Constrain the agent to read-only or discussion-only behavior",
+      "Constrain the agent to read-only or discussion-only behavior with narrowly scoped decision-record persistence",
       "Produce verified, self-reviewed documentation and work summaries",
       "Manage ticket-scoped git worktrees, external repo clones, and HERDR agent dispatch",
       "Initialize and coordinate GitHub Project workflow, lifecycle, review, integration, and release state"
