@@ -80,6 +80,9 @@ set -e
 
 finished=$(date -u +%s)
 duration_seconds=$((finished - started))
+log_lines=$(wc -l < "$log_file" | awk '{print $1}')
+log_chars=$(wc -m < "$log_file" | awk '{print $1}')
+log_bytes=$(wc -c < "$log_file" | awk '{print $1}')
 
 case "$exit_code" in
     0) status="success" ;;
@@ -107,6 +110,7 @@ EOF
 
 printf 'dotnet-runner: status=%s exit_code=%s duration=%ss\n' "$status" "$exit_code" "$duration_seconds"
 printf 'dotnet-runner: log=%s\n' "$log_file"
+printf 'dotnet-runner: log_stats lines=%s chars=%s bytes=%s\n' "$log_lines" "$log_chars" "$log_bytes"
 printf 'dotnet-runner: report=%s\n' "$report_file"
 
 if [ "$mode" = "full" ]; then

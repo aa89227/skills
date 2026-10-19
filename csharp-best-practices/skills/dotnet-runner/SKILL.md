@@ -142,6 +142,8 @@ Use `compact` mode unless the caller explicitly asks for the complete raw log;
   as far as the host process API allows.
 - The default output mode is `compact`: write the complete log, but return only
   the structured report and selected evidence.
+- Include the saved log's `lines`, `chars`, and `bytes` counts in the terminal
+  summary so callers can judge its size before reading it.
 - Do not use `tee` as the default capture strategy because it writes the log and
   forwards the entire stream to the calling agent.
 - Never discard output. If the host supports live mirroring, make it an
