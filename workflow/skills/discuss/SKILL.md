@@ -78,9 +78,32 @@ When recording is enabled or being configured, read
 [references/decision-records.md](references/decision-records.md) before creating or updating a
 record.
 
+## Reading Existing Decision Records
+
+Decision records are durable context, not automatic context for every task. A repository policy
+that enables recording does not require loading the entire decision-record directory.
+
+- Do not glob or load every `docs/decision-records/*.md` file for an ordinary task.
+- If the user names a record or explicitly asks to resume an in-progress record, read that record
+  first and preserve its context.
+- Otherwise, inspect record filenames, titles, and frontmatter before reading bodies. Select
+  candidates using the current request's issue, PR, document, branch, or other exact references in
+  `related`.
+- Read only selected records and the sections relevant to the current question. Skip `Change log`
+  by default; read it when the user asks for history or when the current decision conflicts with
+  the record.
+- Follow directly linked records only when they are needed to resolve the current question. Do not
+  recursively load the whole linked-record graph.
+- Treat `status` as the record's discussion lifecycle, not proof that every statement is current
+  or universally applicable. Do not infer validity or supersession from `updated` alone.
+- Tags are optional retrieval hints, not required metadata and not a source of truth. Do not make
+  a task depend on tags being present.
+- If no directly related record is found, continue without bulk-loading historical records. Ask a
+  focused question only when the missing decision history materially affects the work.
+
 ## Discussion Workflow
 
-1. Inspect relevant context without making changes.
+1. Inspect relevant context using the existing-record reading rules, without making changes.
 2. Resolve the decision-record policy and, when enabled, allocate the next record ID and create an
    initial `in-progress` record containing the request and current context.
 3. Summarize the current understanding, including constraints and consequential unknowns.
