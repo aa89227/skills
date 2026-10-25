@@ -10,7 +10,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Discussion Mode
@@ -80,8 +80,9 @@ record.
 
 ## Reading Existing Decision Records
 
-Decision records are durable context, not automatic context for every task. A repository policy
-that enables recording does not require loading the entire decision-record directory.
+Decision records are time-scoped historical context, not the current implementation or an automatic
+source of future requirements. A repository policy that enables recording does not require loading
+the entire decision-record directory.
 
 - Do not glob or load every `docs/decision-records/*.md` file for an ordinary task.
 - If the user names a record or explicitly asks to resume an in-progress record, read that record
@@ -95,15 +96,67 @@ that enables recording does not require loading the entire decision-record direc
 - Follow directly linked records only when they are needed to resolve the current question. Do not
   recursively load the whole linked-record graph.
 - Treat `status` as the record's discussion lifecycle, not proof that every statement is current
-  or universally applicable. Do not infer validity or supersession from `updated` alone.
+  or universally applicable. `confirmed` means explicitly accepted at the time of the decision; it
+  does not mean that the current implementation or every future requirement still agrees. Do not
+  infer validity or supersession from `updated` alone.
 - Tags are optional retrieval hints, not required metadata and not a source of truth. Do not make
   a task depend on tags being present.
 - If no directly related record is found, continue without bulk-loading historical records. Ask a
   focused question only when the missing decision history materially affects the work.
 
+## Context, provenance, and discussion boundary
+
+Keep these sources separate:
+
+- **Current implementation:** the current target-branch source code, tests, configuration, and
+  other repository artifacts. Read these when the question is what the system currently does.
+- **Issue body:** a time-scoped requirement snapshot for the Issue's stated work. It describes the
+  intended scope and acceptance at that Issue revision; it is not proof of current implementation.
+- **Decision record:** time-scoped rationale, alternatives, consequences, and decision history. It
+  is not a permanent or future specification.
+
+If the user asks about current behavior, inspect the current implementation first. Read an Issue
+for its requested scope or lifecycle when that context is needed, and read a decision record when
+the user needs the reason for a past choice or the decision history materially affects the work.
+Do not trace historical Issues or decision records merely to answer what the code currently does.
+
+The agent MAY independently draft or choose details needed to complete a task. Discussion does not
+require the user to decide every field, class, or implementation choice. Record a material item when
+it was stated by the user, surfaced by the agent as a meaningful proposal or decision, supported by
+repository evidence, or needed to explain a consequential choice. Do not record private reasoning,
+every generated option, or routine internal implementation choices.
+
+Use consequence, not technical visibility, to decide whether to ask. The agent may choose external
+contract details autonomously when reasonable alternatives have the same intended meaning. Ask a
+focused question or pause only when the alternatives change user-visible semantics, compatibility or
+migration, security or privacy, cost or operational risk, irreversible data behavior, or conflict
+with an explicit requirement or repository evidence. Class names, method boundaries, package choices,
+parser algorithms, file layout, test mechanics, and similar routine details do not require a new
+discussion unless they create one of those consequences.
+
+For every recorded material item, distinguish its source and state: user requirement, repository
+evidence, agent inference, proposed choice, explicitly accepted decision, rejected alternative, or
+unresolved question. Seeing a proposal is not the same as explicitly accepting it. An agent may
+produce a complete draft without asking the user to decide each detail, but must not describe its
+own draft as a user-confirmed historical decision.
+
+When a material discussion decision changes an Issue requirement, keep the two artifacts aligned by
+role: record the decision and its rationale in the decision record, and write the resulting
+time-scoped requirement snapshot in the Issue body. Link the related artifacts when possible, but do
+not copy private reasoning or routine implementation details into the Issue, and do not use the
+decision record as the latest contract. A later requirement or implementation change updates the
+newer source and preserves the older record as history.
+
+When a specification-type task requires a final representation, the agent must provide the needed
+deliverable at the appropriate handoff point. It must not keep discussion open merely to enumerate
+every combination or internal detail; cover the semantic branches that change the contract and
+defer routine implementation choices.
+
 ## Discussion Workflow
 
-1. Inspect relevant context using the existing-record reading rules, without making changes.
+1. Identify whether the request concerns current implementation behavior, a time-scoped requirement,
+   or historical rationale. Inspect current code for current behavior and only the related Issue or
+   decision record needed for the other questions, without making changes.
 2. Resolve the decision-record policy and, when enabled, allocate the next record ID and create an
    initial `in-progress` record containing the request and current context.
 3. Summarize the current understanding, including constraints and consequential unknowns.

@@ -103,7 +103,7 @@ Use `Work Mode` in Project metadata when the field exists; otherwise record it i
 
 | Work Mode | Use when | Required result |
 | --- | --- | --- |
-| `Discussion` | The next action is to clarify a product decision or unresolved requirement. | A resolved decision or an updated canonical specification. No implementation. |
+| `Discussion` | The next action is to clarify a product decision or unresolved requirement. | A resolved decision or an updated time-scoped requirement snapshot. No implementation. |
 | `Research` | A bounded question needs evidence before behavior or design can be approved. | Evidence, a decision, or a constraint recorded in the child and parent Issue. Default Release Note is `None`. |
 | `Prototype` | A time-boxed experiment is needed to reduce uncertainty about feasibility or user behavior. | Findings and a go/no-go decision recorded in the child and parent Issue. Prototype output is not production behavior by default. |
 | `Delivery` | The child is an approved production requirement. | The user-visible or operational result, verified and integrated through the normal PR workflow. |
@@ -114,7 +114,7 @@ blocking dependency, a research result, or a prototype result.
 
 `Discussion` is a temporary clarification mode for a Requirement or discovery child. Such a child
 MUST remain in `Inbox` or `Specifying`; it MUST NOT enter implementation. When the discussion
-resolves, the agent MUST update the canonical body and set the child mode to `Delivery`, `Research`,
+resolves, the agent MUST update the requirement snapshot and set the child mode to `Delivery`, `Research`,
 or `Prototype`, then obtain the applicable specification approval before proceeding. A Discussion
 child MUST NOT be treated as a releasable or independently completable delivery item. An Initiative
 parent MAY retain `Work Mode: Discussion` while its aggregate lifecycle advances; the parent is

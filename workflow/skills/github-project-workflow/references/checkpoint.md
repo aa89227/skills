@@ -52,8 +52,10 @@ history according to their source-of-truth responsibilities.
 The agent MUST set `Execution: Waiting for Human` or `Waiting for Information` and stop the
 affected operation when any of these conditions applies:
 
-1. `Specifying` → `Ready` needs current specification approval. Tell Human to change the Issue's
-   Project Status to `Ready` after reviewing the canonical Issue body.
+1. `Specifying` → `Ready` needs approval of the current time-scoped requirement snapshot. Tell
+   Human to change the Issue's Project Status to `Ready` only after reviewing the Issue body and,
+   for a specification-type Issue, its actual contract and representative semantic-variant
+   examples. Do not treat that approval as evidence that the target branch already implements it.
 2. `In Review` → `Ready to Merge` needs implementation approval. In `Collaborative` mode, tell
    Human to submit a native GitHub `APPROVED` review on every required artifact PR. In `Solo
    Maintainer` mode, tell Human to review the current head of every required PR, record the full
@@ -66,7 +68,8 @@ affected operation when any of these conditions applies:
    branch, runtime code, or implementation PR.
 4. A material requirement change is identified but the new behavior, scope, acceptance criteria,
    or important constraint is not explicit. Return the affected Issue to `Specifying`, update the
-   canonical body with the known facts, and wait for clarification and new specification approval.
+   requirement snapshot with the known facts, and wait for clarification and new specification
+   approval.
 5. Human cancellation, reparenting, replacement, or removal of Initiative work is required.
 6. A lifecycle transition is not in the allowed matrix, an entry/exit criterion is missing, or
    the configured Project does not expose the required lifecycle values.
@@ -111,7 +114,7 @@ When no hard-pause condition overrides the normal path, use the following determ
 | Lifecycle Status | Normal checkpoint next action |
 | --- | --- |
 | `Inbox` | `Agent: organize the Issue and move to Specifying when requirement work starts.` |
-| `Specifying` | `Agent: update the canonical specification`; when criteria are complete, `Human: set Project Status to Ready`. |
+| `Specifying` | `Agent: update the current requirement snapshot`; when criteria are complete, `Human: set Project Status to Ready`. |
 | `Ready` | `Agent: run the Design System gate check when scope is non-`None`; begin the approved Work Mode and change to `In Progress` only when the gate is `Open` and work actually starts. |
 | `In Progress` | `Agent: continue the approved implementation or discovery work and prepare the complete result for review.` |
 | `In Review` | `Human: review the complete result`; then provide the required approval for the selected Review Mode or discovery acceptance. |

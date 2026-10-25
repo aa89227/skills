@@ -60,7 +60,7 @@ Their meanings are:
 | Status | Meaning |
 | --- | --- |
 | `Inbox` | The requirement exists but has not been formally organized. |
-| `Specifying` | The canonical requirement is being clarified and completed. |
+| `Specifying` | The time-scoped requirement snapshot is being clarified and completed. |
 | `Ready` | A human has approved the current Issue requirement, scope, and acceptance criteria. For Design System work, this is Requirement Approval only; it does not approve the Design System contract. |
 | `In Progress` | Approved implementation or bounded discovery work has started. |
 | `In Review` | The complete implementation or discovery result is ready for review. |

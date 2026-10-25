@@ -1,7 +1,26 @@
 # Decision Records
 
 Use this reference whenever discussion recording is enabled or being configured. The record is a
-durable handoff, not a transcript of the conversation.
+time-scoped decision history and durable rationale, not a transcript, current implementation
+specification, or promise about future behavior.
+
+## Temporal scope and provenance
+
+Each record describes what was known and decided at a particular point in time. A record does not
+replace the current target-branch code, tests, configuration, or other implementation artifacts.
+When current behavior matters, inspect those artifacts directly.
+
+For every material statement, distinguish the source and state when relevant:
+
+- user requirement or explicit user decision;
+- repository evidence observed at a known revision;
+- agent inference or proposal;
+- accepted, rejected, or deferred choice; or
+- unresolved question.
+
+Do not turn an agent-generated draft into a user-confirmed decision merely because it was shown to
+the user. Do not record private reasoning or routine implementation choices that were not material
+to the discussion.
 
 ## Repository Policy
 
@@ -61,6 +80,12 @@ Use this body structure, omitting sections that genuinely do not apply:
 
 What problem, opportunity, or question led to the discussion? State scope and non-goals.
 
+## Decision status and evidence
+
+State which material facts are user-confirmed, which are repository evidence, which are agent
+proposals or inferences, and which remain unresolved. Link the relevant Issue, code revision, or
+other source when known.
+
 ## Business decision
 
 Record user, product, policy, stakeholder, or outcome decisions. Use this section for
@@ -102,7 +127,8 @@ turn.
   relationship.
 - in-progress: the record is being updated during an active discussion.
 - proposed: an approach is recommended but the user has not explicitly confirmed it.
-- confirmed: the user explicitly accepted the decision.
+- confirmed: the user explicitly accepted the decision at that time; this does not assert that the
+  current implementation or a future requirement still has the same behavior.
 - deferred: the question is intentionally postponed.
 - superseded: a later record replaces it; link the replacement.
 - no-decision: the discussion ended without a material decision.
@@ -117,6 +143,15 @@ only when the user makes that intent clear; otherwise create a new record and li
 - Record decisions, rationale, alternatives, consequences, and follow-up—not every conversational
   turn.
 - Distinguish user-confirmed facts, repository evidence, agent inferences, and unresolved questions.
+- Treat current target-branch code, tests, and configuration as the source for implemented behavior;
+  do not use a decision record to answer what the system currently does.
+- Keep the Issue body and decision record time-scoped. If a later requirement or implementation
+  changes the result, preserve the historical record and link or mark the newer source rather than
+  silently rewriting the old decision.
+- When a material decision changes an Issue requirement, record the rationale and decision state here
+  and update the Issue body with the resulting requirement snapshot. The Issue remains the handoff
+  requirement for that revision; this record does not become the latest contract, and a separate
+  specification artifact must be explicitly identified if the contract is not in the Issue.
 - Update the record after each material change and before reporting the discussion's final status.
 - Preserve the original context and rationale when revising a proposal; note material changes in
   the change log rather than silently rewriting history.

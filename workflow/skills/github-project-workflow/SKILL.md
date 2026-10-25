@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.5"
+  version: "1.6"
   tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
@@ -41,16 +41,48 @@ Every Issue create or revision MUST pass a reader-first gate before any GitHub I
    technical test or framework constraint may support that outcome, but must not be the only wording.
 5. If any check fails, rewrite the draft before calling GitHub. Do not publish a technically complete
    Issue that a non-engineering reader cannot understand merely because the canonical headings are present.
+6. When the Issue's deliverable is a schema, data format, protocol, API contract, content model,
+   serialization format, or editor block format, explain the technical representation in plain
+   language but do not omit it. The contract is requirement content in this case; it is not
+   implementation detail merely because it uses technical notation.
 
 Use the mandatory checklist and drafting examples in
 [references/issue.md](references/issue.md#mandatory-reader-first-preflight) for the final pass.
+
+## Specification-type Issue boundary
+
+A specification-type Issue is one whose deliverable is a schema, data format, protocol, API
+request/response contract, content model, serialization format, grammar, Markdown or editor block
+format, or another contract intended to be consumed or persisted by an implementation.
+
+For this kind of Issue, the contract is part of the requirement. The agent MAY draft and complete
+the contract without asking the user to decide every field, but it MUST distinguish a draft or agent
+inference from an explicitly accepted decision. Before `Ready`, the Issue body or an explicitly
+versioned, directly linked specification artifact (not a decision record) must contain the actual
+contract needed for handoff, including examples that cover semantic variants and the applicable
+persistence, round-trip, compatibility, error, and unknown-data behavior. It must not require
+exhaustive examples for every data combination.
+
+The Issue body must contain at least one complete representative example when the acceptance
+criteria require examples; a future promise or an Implementation Notes-only example is insufficient.
+Parser names, class structure, package choice, commands, database mechanics, and test-framework
+choices remain implementation details unless they change the external requirement.
+
+This is a completeness gate within `Specifying`, not a new lifecycle status. A missing contract item
+keeps the Issue in `Specifying`; it does not require the user to pre-approve each internal design
+choice.
 
 ## Operating contract
 
 - MUST read the current GitHub artifacts and repository state; MUST NOT rely on previous chat
   context as a handoff record.
-- MUST keep the Issue body as the current canonical specification. Comments are history, not a
-  required specification source.
+- MUST keep the Issue body as the current time-scoped requirement snapshot for the Issue's lifecycle.
+  It is not proof of current implementation behavior and does not replace reading the current
+  target-branch source code, tests, or configuration.
+- MUST distinguish current implementation, Issue requirement snapshots, and decision history. Read
+  the current repository artifacts when asked what the system currently does; read the Issue for its
+  requested scope and lifecycle; read decision records when historical rationale materially matters.
+  Do not bulk-load historical Issues or decision records merely to answer current behavior.
 - MUST classify a request as one Requirement or an Initiative with child Requirements using
   [references/epic.md](references/epic.md). The user does not need to manage that decomposition.
 - MUST write Issue requirements in plain, non-engineering language by default. When technical
@@ -94,7 +126,9 @@ Use the mandatory checklist and drafting examples in
 
 | Artifact | Authoritative responsibility |
 | --- | --- |
-| Issue body | Requirement: problem, goal, scope, criteria, constraints, edge cases, open questions, and release note |
+| Current target-branch source, tests, and configuration | Current implemented behavior and repository state; verify the actual result here rather than inferring it from an Issue or decision record |
+| Issue body | Time-scoped requirement snapshot: problem, goal, scope, criteria, constraints, edge cases, open questions, and release note for the current Issue revision |
+| Decision record | Time-scoped decision rationale, alternatives, consequences, evidence, and history; not current implementation truth or a future specification |
 | Parent Issue/sub-issues | Initiative hierarchy and aggregate planning context |
 | Pull request(s) | Review: implementation diff, CI, review discussion/history, and stack relationships |
 | Remote target branch | Integration: what is actually integrated |
@@ -142,7 +176,7 @@ create lifecycle statuses for those modes.
 
 The following are the workflow's human approval gates:
 
-- `Specifying` → `Ready`: the current specification is approved.
+- `Specifying` → `Ready`: the current time-scoped requirement snapshot is approved.
 - For Design System work, the separate `Design System Approval` requires a confirmed Experience
   Brief, approved Component Specification, recorded Accessibility requirements, and approved
   Test/Conformance Specification with completed mapping. It is not supplied by `Ready`, passing
@@ -170,7 +204,7 @@ and this workflow MUST NOT silently bypass a native-review requirement enforced 
 
 For a no-artifact `Research`/`Prototype` item, discovery approval remains a human Project Status
 change to `Ready to Merge` after the recorded result is reviewable. The human action/review must be
-verifiable and apply to the current specification or implementation/result. `Cancelled` is not an
+verifiable and apply to the current requirement snapshot or implementation/result. `Cancelled` is not an
 approval gate, but it still requires a separate explicit human cancellation decision as defined in
 [references/lifecycle.md](references/lifecycle.md).
 For an `Initiative` parent, child approvals and accepted discovery results satisfy the aggregate
@@ -179,13 +213,15 @@ gate; the parent has no implementation PR of its own.
 ## Session entry and exit
 
 At session start, perform the minimum context recovery in
-[references/session-protocol.md](references/session-protocol.md): read the Issue, Project metadata,
-related PRs, target/base branches, working tree, and remote state; then reconcile facts before
-acting. If facts conflict, investigate the objective state first; do not edit Status merely to make
-the records look consistent.
+[references/session-protocol.md](references/session-protocol.md): read the Issue for its time-scoped
+requirement and lifecycle, inspect the current repository implementation when behavior or progress
+matters, and read Project metadata, related PRs, target/base branches, working tree, and remote
+state; then reconcile facts before acting. If facts conflict, investigate the objective state first;
+do not edit Status merely to make the records look consistent.
 
-At session end, update the canonical GitHub artifacts with the latest specification, status, PR
-description, pushed progress, verification, blockers, and stack relationship. Do not create a
+At session end, update the GitHub artifacts with the latest requirement snapshot, status, PR
+description, pushed progress, verification, blockers, and stack relationship. Do not present the
+Issue body or a decision record as a substitute for the current implementation, and do not create a
 separate handoff file or force an unfinished task into review. If Delivery implementation has
 started but is incomplete, keep the Issue `In Progress` with a Draft PR. If no-artifact discovery
 work has started but is incomplete, keep it `In Progress` and record the next evidence or

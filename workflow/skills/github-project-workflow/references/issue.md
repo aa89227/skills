@@ -15,10 +15,22 @@ An `Issue Role: Initiative` parent is a planning-container exception: it groups 
 Requirements through GitHub's native parent/sub-issue relationship and has no implementation PR of
 its own. Each child remains one logical requirement and follows this specification.
 
-The Issue body is the canonical current specification. When a requirement changes, update the body
+The Issue body is the canonical time-scoped requirement snapshot for the Issue's current revision.
+It describes the intended scope, acceptance, and constraints at that point in the Issue lifecycle;
+it is not proof of current implementation behavior. When a requirement changes, update the body
 before changing lifecycle or implementation. Do not leave the new requirement only in a comment.
-Comments MAY record questions, decisions, and history, but a new agent MUST be able to work from the
-body without reading a long comment thread.
+Comments MAY record questions, decisions, and history, but a new agent MUST be able to recover the
+Issue's requested work from the body without reading a long comment thread.
+
+The body is the resulting requirement snapshot, not a transcript of everything the agent said. Keep
+material unresolved questions explicit, but do not copy private reasoning or routine implementation
+choices into the requirement merely because they appeared in discussion.
+
+The current target-branch source code, tests, configuration, and other repository artifacts are the
+authority for what is actually implemented. A decision record preserves time-scoped rationale and
+does not replace either the current implementation or the Issue's current requirement snapshot.
+When those sources disagree, report and reconcile the difference; do not silently treat a historical
+record as a future specification or infer current behavior from the Issue body.
 
 ## Issue language
 
@@ -36,24 +48,62 @@ stored value and MUST update it.
 
 ## Reader-first writing rules
 
-The Issue is the requirement source of truth and MUST be understandable by a non-engineering
-reader. The agent MUST write the title, problem, goal, scope, acceptance criteria, constraints,
-edge cases, and release note in plain language focused on user impact and observable outcomes.
+The Issue is the requirement source of truth for its current Issue revision and MUST be
+understandable by a non-engineering reader. It is not the source for current implemented behavior.
+The agent MUST write the title, problem, goal, scope, acceptance criteria, constraints, edge cases,
+and release note in plain language focused on user impact and observable outcomes.
 
 - MUST NOT add engineering terminology merely because it is familiar to the agent.
 - MAY use a technical term when it is necessary to define a constraint, behavior, risk, or
   acceptance condition.
 - When a technical term is necessary, the first occurrence MUST include a plain-language
   explanation or a definition in `Terms / Glossary`.
-- Exact technical identifiers, architecture details, API names, commands, schemas, and
-  implementation mechanics MUST be kept in the final `Implementation Notes` section unless an
-  earlier section needs the exact term to make the requirement unambiguous.
+- Exact technical identifiers, architecture details, API names, commands, and implementation
+  mechanics MUST be kept in the final `Implementation Notes` section unless an earlier section
+  needs the exact term to make the requirement unambiguous. When the Issue's deliverable is a
+  schema, data format, protocol, API contract, content model, serialization format, or editor block
+  format, the contract itself is requirement content and MUST NOT be moved to `Implementation Notes`
+  merely because it is technical.
 - `Implementation Notes` MUST be the last Issue section. It is for technical context needed by
   implementers, not a second copy of the requirement.
 
 Acceptance criteria SHOULD describe what a user, operator, or reviewer can observe. A technical
 test or internal check MAY be included when it is necessary evidence, but it MUST be accompanied by
 the plain-language outcome it protects.
+
+## Specification-type requirements
+
+A specification-type Issue is one whose deliverable is a schema, data format, protocol, API
+request/response contract, content model, serialization format, grammar, Markdown or editor block
+format, or another contract intended to be consumed or persisted by an implementation.
+
+The agent MAY draft and complete the contract without asking the user to decide every field. The
+Issue MUST distinguish an agent-generated draft or inference from an explicitly accepted decision;
+the user's silence or exposure to a proposal is not acceptance. Before `Specifying` → `Ready`, the
+Issue body or an explicitly versioned durable artifact MUST contain the actual contract needed for
+handoff. A linked artifact used for this purpose MUST be an explicitly versioned specification
+artifact, not a decision record. The contract must include:
+
+- the outer representation or grammar;
+- the responsibility and requiredness of persisted or consumed fields;
+- version, identifier, default, nullability, unknown-data, and unsupported-version behavior when
+  applicable;
+- representative examples covering semantic variants, not every possible combination; and
+- persistence, round-trip, compatibility, error, or other observable behavior that applies.
+
+If an Acceptance Criterion says that a representative example is provided, the Issue body MUST
+contain at least one complete example before that criterion is treated as satisfied. A promise to
+provide one later, an empty placeholder, or an example hidden only in `Implementation Notes` does
+not satisfy the criterion. If the contract is not complete, keep the missing item explicit as a
+blocking `Open Questions` entry and keep the Issue in `Specifying`.
+
+This gate does not require the user to pre-approve each field or require Discuss to enumerate every
+internal design choice. Ask for human input only when competing choices change user-visible meaning,
+compatibility or migration, security or privacy, cost or operational risk, irreversible data
+behavior, or conflict with an explicit requirement or repository evidence. It requires the final
+requirement snapshot to be usable without guessing.
+Parser names, class structure, package choice, commands, database mechanics, and test-framework
+choices remain implementation details unless they change the external requirement.
 
 ## Mandatory Reader-first preflight
 
@@ -72,9 +122,11 @@ reasonably determined.
   explanation, for example `通知方式（notification method）`. A glossary entry by itself does not
   excuse an unexplained first occurrence.
 - **Technical-detail boundary:** Move exact API names, commands, schemas, test frameworks, package
-  names, data structures, and implementation mechanics to `Implementation Notes` unless the exact
-  term is required to make the behavior unambiguous. When it remains earlier, explain why the exact
-  term matters.
+  names, and implementation mechanics to `Implementation Notes` unless the exact term is required
+  to make the behavior unambiguous. For a specification-type Issue, do not move the required
+  contract, field semantics, representative examples, or observable serialization behavior there;
+  explain the technical term and keep the contract in the requirement sections or linked durable
+  artifact.
 - **Observable acceptance:** Every acceptance criterion uses `- [ ]` and describes a result that a
   user, operator, or reviewer can observe. Pair any internal test or implementation condition with
   the user-facing outcome it protects.
@@ -82,6 +134,17 @@ reasonably determined.
   be explained inline. Use `None` only when no such terms remain.
 - **Structure:** Required sections appear in the canonical order, `Open Questions` uses the required
   table shape, unresolved placeholders are removed, and `Implementation Notes` is the final section.
+- **Specification contract:** If the Issue is specification-type, verify that the actual contract,
+  semantic-variant examples, and applicable round-trip, compatibility, error, or unknown-data rules
+  are present in the Issue or in an exact versioned, directly linked specification artifact. A
+  decision record does not satisfy this requirement. Do not require exhaustive examples for
+  combinations that do not change the contract.
+- **Requirement provenance:** Distinguish user requirements, repository evidence, agent inferences,
+  proposed choices, accepted decisions, and unresolved questions. Do not present an AI-generated
+  draft as a user-confirmed decision.
+- **Current behavior check:** When the Issue makes a claim about what the system currently does,
+  verify it against the current target-branch code, tests, and configuration; do not infer it from an
+  Issue body or decision record.
 - **Final reader pass:** Read only the title through `Release Note` as if you were the intended
   non-engineering reader. If the reader would need to ask what a term means or why an implementation
   choice matters, rewrite that passage before publishing.
@@ -187,8 +250,8 @@ routing rule, design questions, mixed-Issue handling, and examples, read
 ## Canonical Issue body
 
 Use these semantic sections in this order. The heading labels are illustrative semantic names and
-MAY be localized; the prose under each section is the current value, not a placeholder for a
-comment thread.
+MAY be localized; the prose under each section is the current time-scoped requirement snapshot, not
+a placeholder for a comment thread or a claim about the current implementation.
 
 ```markdown
 ## Summary
@@ -206,6 +269,11 @@ comment thread.
 ## Scope
 
 <!-- Included behavior and implementation boundaries. -->
+
+## Contract / Format Specification
+
+<!-- Required only for a specification-type Issue. Include the actual contract or an exact,
+     versioned specification-artifact reference and at least one complete representative example. -->
 
 ## Out of Scope
 
@@ -261,11 +329,13 @@ None
 - None
 ```
 
-The template is a shape, not permission to retain unresolved placeholders. Before `Specifying` →
+The template is a shape, not permission to retain unresolved placeholders. The `Contract / Format
+Specification` section is required only for a specification-type Issue. Before `Specifying` →
 `Ready`, replace every placeholder, mark acceptance criteria accurately, and resolve or explicitly
 classify every open question. A row with `Blocking: Yes` and no resolution prevents `Ready`. If a
-technical term is used, complete `Terms / Glossary`; keep its exact implementation details in the
-final `Implementation Notes` section.
+technical term is used, complete `Terms / Glossary`; keep internal implementation details in the
+final `Implementation Notes` section while keeping any required external contract in the requirement
+sections or linked durable artifact.
 
 ## Release Note rules
 

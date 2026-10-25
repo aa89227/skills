@@ -42,7 +42,7 @@ Priority; use the parent-level impact, commitment, or gate evidence.
 
 ## Rationale and evidence
 
-Whenever Priority is assigned or changed, update the canonical Issue body with one concise
+Whenever Priority is assigned or changed, update the current Issue requirement snapshot with one concise
 `Priority Rationale`. It MUST contain both the reason and the evidence. Comments MAY preserve the
 change history, but the current value and rationale MUST not exist only in comments.
 

@@ -75,7 +75,7 @@ reason, exit criteria, and entry criteria in the row are all satisfied.
 | From | To | Actor | Required condition |
 | --- | --- | --- | --- |
 | `Inbox` | `Specifying` | Agent | The Issue exists and requirement work has started; no implementation is performed. |
-| `Specifying` | `Ready` | Human action required | Required specification fields are current, scope and acceptance criteria are clear, no blocking open question remains, and a human directly changes Project Status to `Ready`. The agent only verifies this evidence. |
+| `Specifying` | `Ready` | Human action required | Required specification fields are current, scope and acceptance criteria are clear, no blocking open question remains, and a specification-type Issue has its actual contract and representative semantic-variant examples in the Issue or a directly linked versioned specification artifact, not only a decision record. A human directly changes Project Status to `Ready`; the agent only verifies this evidence. |
 | `Ready` | `In Progress` | Agent | The approved specification is frozen, the approved work has actually started, and the Design System gate check passes. For `Design System Scope: None`, ordinary lifecycle criteria are sufficient. For any non-`None` scope, `Implementation Gate: Open` is required; for `Build` or `Design+Build`, `Design System Phase: Contract Approved`, `Design System Approval: Approved`, the implementation plan, and validation targets are also required. A `Design` scope may use `In Progress` only for approved design artifacts and never as permission to run `build`. If the gate is `Blocked`, the agent MUST NOT enter `In Progress`, create an implementation branch, modify runtime code, or create an implementation PR. A `Discussion` Requirement MUST change to another Work Mode before this transition. |
 | `Ready` | `Specifying` | Agent after an identified material requirement change | Update the Issue body and invalidate the prior specification approval. |
 | `In Progress` | `In Review` | Agent | For `Delivery`, all required implementation is complete, required checks pass, all required PRs exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. During reconciliation, persisted review history for an already processed PR MAY satisfy the reviewable condition. |
@@ -109,12 +109,14 @@ discussion. The agent MUST NOT implement. Move to `Specifying` when requirement 
 
 ### Specifying
 
-The Issue body MUST be the current specification and contain the required headings in
-[issue.md](issue.md). Comments MAY preserve discussion history, but the current requirement MUST
-be understandable from the body alone. The agent MAY research, ask questions, analyze constraints,
-and propose criteria; this is specification work, not execution of a declared Research or
-Prototype item. The agent MUST NOT approve the specification, implement Delivery, or execute the
-declared discovery work before the Issue is `Ready`.
+The Issue body MUST be the current time-scoped requirement snapshot for the Issue and contain the
+required headings in [issue.md](issue.md). Comments MAY preserve discussion history, but the
+requested work MUST be understandable from the body alone. The current target-branch code, tests,
+and configuration remain the authority for what is actually implemented; the Issue body does not
+replace reading them. The agent MAY research, ask questions, analyze constraints, and propose
+criteria; this is specification work, not execution of a declared Research or Prototype item. The
+agent MUST NOT approve the specification, implement Delivery, or execute the declared discovery work
+before the Issue is `Ready`.
 
 For an Initiative, [epic.md](epic.md) defines how the parent and child Requirements use this same
 state machine. `Discussion`, `Research`, `Prototype`, and `Delivery` are work-mode metadata, never
@@ -122,12 +124,17 @@ additional lifecycle statuses.
 
 The exit condition for `Ready` is: clear acceptance criteria, clear scope and out-of-scope, no
 unresolved blocking open question, required constraints/edge cases captured, and explicit human
-approval of the current body.
+approval of the current requirement snapshot. For a specification-type Issue, the exit condition
+also requires the actual contract, representative examples for semantic variants, and applicable
+round-trip, compatibility, error, or unknown-data behavior in the Issue or an exact versioned,
+directly linked specification artifact, not only a decision record. This gate does not require human
+approval of every field or internal implementation choice.
 
 ### Ready
 
-`Ready` means Requirement Approval: the Issue specification is human-approved and frozen for the
-selected Work Mode. It does not mean that a Design System contract is approved. For a Design System
+`Ready` means Requirement Approval: the Issue's time-scoped requirement snapshot is human-approved
+and frozen for the selected Work Mode. It does not mean that the target branch already implements
+the requirement, and it does not mean that a Design System contract is approved. For a Design System
 Issue whose `Implementation Gate` is `Blocked`, the agent MUST NOT use the general planning
 permission to create an implementation branch or Draft PR; it must first complete the handoff in
 [design-system-handoff.md](design-system-handoff.md). For `Design System Scope: None`, ordinary
@@ -219,7 +226,9 @@ approval valid. If either condition fails, return to `In Progress` and obtain re
 
 Before every lifecycle status change, the agent MUST:
 
-1. Read the Issue body, Issue open/closed state, and current Project Status.
+1. Read the Issue body as the time-scoped requirement snapshot, Issue open/closed state, and current
+   Project Status. When behavior or implementation progress matters, inspect the current target-
+   branch source, tests, and configuration separately.
 2. Read relevant PR state, reviews, checks, base/head, and stack relationship.
 3. Read the remote target branch when the transition concerns integration, `Done`, or
    reconciliation.
@@ -236,7 +245,8 @@ Before every lifecycle status change, the agent MUST:
 12. Record any missing condition instead of transitioning; emit a checkpoint before returning
     control to Human.
 
-Reading only a PR or only a Project card is insufficient evidence for a lifecycle transition.
+Reading only a PR or only a Project card is insufficient evidence for a lifecycle transition. An
+Issue body or decision record is also insufficient evidence of current implementation behavior.
 
 ## Stale-status reconciliation
 

@@ -4,6 +4,12 @@ Use this reference whenever an agent starts work on an existing Issue, takes ove
 session, or ends a session with work still in progress. GitHub artifacts are the handoff system;
 do not create a separate `HANDOFF.md` or rely on conversation history.
 
+The Issue body is a time-scoped requirement snapshot, and a decision record is time-scoped rationale
+and history. Neither is evidence of the current implementation. When current behavior, progress, or
+acceptance against the integrated result matters, inspect the current target-branch source, tests,
+configuration, and remote state. Read historical decision records only when their rationale or
+decision history is needed.
+
 ## Start protocol
 
 The agent MUST perform context recovery before implementation or a lifecycle transition.
@@ -14,9 +20,9 @@ completion state. Do not assume the parent or the newest child represents the co
 
 ### 1. Recover the requirement
 
-Read the Primary Issue's:
+Read the Primary Issue's requirement snapshot and workflow metadata:
 
-- body and latest canonical specification;
+- body and latest requirement snapshot;
 - GitHub open/closed state;
 - Project Status;
 - Type;
@@ -30,8 +36,10 @@ Read the Primary Issue's:
   `Workflow Metadata`.
 
 If the Issue body is stale, incomplete, or contradicts current human decisions, update the body or
-stop for clarification before implementation. Do not reconstruct the requirement from comments
-alone.
+stop for clarification before implementation. If it differs from current code, treat that as a
+requirement-versus-implementation fact to reconcile, not as proof that the code or Issue is wrong.
+Do not reconstruct the requirement from comments alone, and do not infer current behavior from the
+Issue body or a decision record.
 
 ### 2. Recover workflow metadata
 
@@ -67,9 +75,9 @@ Compare these four dimensions:
 | Dimension | Question |
 | --- | --- |
 | Project | What lifecycle status, Priority, and blocker metadata are recorded? |
-| Issue | Is the requirement body, Priority rationale, and Issue open/closed state current? |
+| Issue | What requirement snapshot, Priority rationale, and Issue open/closed state are recorded? |
 | PRs | What is reviewed, approved, merged, closed, draft, or failing? |
-| Remote repository | What content is actually in the target branch? |
+| Remote repository | What content and implementation are actually in the target branch? |
 
 If they disagree, establish objective facts first. Do not change Project Status merely to make it
 match a PR label, Issue closed state, or local branch. Record the inconsistency and choose the
@@ -96,7 +104,9 @@ allowed transition only after the evidence and approval conditions are satisfied
 
 Before ending a session, the agent MUST ensure:
 
-- the Issue body is the latest canonical specification;
+- the Issue body is the latest requirement snapshot for the Issue;
+- the current implementation and verification facts are recorded from the target-branch repository
+  state, not inferred from the Issue body or a decision record;
 - Project Status, Priority, Priority rationale, and blocker metadata reflect verified facts;
 - every PR description has the correct Primary Issue, summary, verification, and stack context;
 - necessary implementation progress is pushed to the implementation branch;
