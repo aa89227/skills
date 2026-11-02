@@ -46,12 +46,110 @@ The agent MUST persist the selected language in the Issue's `Workflow Metadata` 
 later session does not depend on chat context. A later Human language preference overrides the
 stored value and MUST update it.
 
+## Requirement shapes and primary representation
+
+The following are drafting shapes, not new Issue Types, lifecycle statuses, or `Work Mode` values.
+Keep the repository's existing Issue Type and Work Mode metadata. Select the shape that best
+describes the Issue's main deliverable:
+
+| Shape | Primary representation | Minimum content |
+| --- | --- | --- |
+| Ordinary requirement | Observable outcome and scenario(s) | Problem, expected outcome, scope, acceptance |
+| Specification | Contract, field responsibilities, and semantic-variant examples | Actual contract, applicable behavior rules, acceptance |
+| Research | Question, evidence, conclusion, and unresolved items | Bounded question, evidence plan, decision criteria |
+| Bug | Reproduction and actual-versus-expected behavior | Reproduction, expected result, regression verification |
+| Refactor | Behavior-preservation boundary and verification | Preserved behavior, technical boundary, validation |
+| Initiative | Product outcome and native child map | Parent outcome, scope, child Requirements, aggregate success |
+
+Use one primary definition location for each material requirement:
+
+- external shape and field meaning belong in `Contract / Format Specification`;
+- allowed or forbidden states belong in domain rules or acceptance criteria;
+- quality thresholds belong in `Constraints` or the relevant acceptance criterion;
+- observable proof belongs in `Acceptance Criteria`;
+- internal implementation choices belong in `Implementation Notes`.
+
+Other sections MAY reference or verify the primary definition, but MUST NOT copy it in full. Omit
+conditional sections that would contain only `None` or a duplicate.
+
+Use Given/When/Then only when an event produces an observable result. Do not use it to describe a
+field list, class design, research question, or pure behavior-preserving refactor. Add another
+scenario only when the actor, result, permission, data responsibility, persistence behavior, or
+error behavior materially differs. Use an example or variant table for multiple values of the same
+behavior. Split an Issue only when the parts can be independently delivered, reviewed, and accepted;
+success, failure, permission, and alternate paths usually remain in one logical requirement.
+
+### English drafting template
+
+The following template is a stable structural reference for agents. Actual Issue prose and headings
+follow the selected Issue language.
+
+```text
+## Problem / Purpose
+
+## Expected Outcome
+
+## Scenario(s)                 <!-- conditional: observable behavior -->
+
+## Contract / Format Specification  <!-- conditional: specification deliverable -->
+
+## Scope
+### In Scope
+### Out of Scope                  <!-- conditional when meaningful -->
+
+## Acceptance Criteria
+
+## Constraints                    <!-- conditional when meaningful -->
+## Edge Cases                     <!-- conditional when behavior changes -->
+## Terms / Glossary               <!-- conditional when jargon remains -->
+## Open Questions                 <!-- conditional when unresolved -->
+
+## Release Note
+## Workflow Metadata
+## Implementation Notes           <!-- conditional; always last when present -->
+```
+
+English examples:
+
+```text
+## Problem / Purpose
+
+People can save a record, but reopening it does not preserve the meaning of the selected options.
+
+## Expected Outcome
+
+The saved record can be reopened and saved again without losing the selected options.
+
+## Scenario
+
+Given a user has selected valid options,
+When the user saves and reopens the record,
+Then the same options are displayed and can be saved again without semantic loss.
+```
+
+For a specification shape, the contract itself remains in the Issue:
+
+```text
+## Contract / Format Specification
+
+The payload contains a stable version, a required identifier, and a list of entries. The example
+below covers the ordinary case; additional examples cover semantic variants that change validation,
+permissions, persistence, or compatibility behavior.
+```
+
+Do not turn routine implementation choices into questions just because the Issue uses a technical
+contract. Ask the user only when alternatives change user-visible meaning, compatibility or
+migration, security or privacy, cost or operational risk, irreversible data behavior, or conflict
+with explicit requirements or repository evidence.
+
 ## Reader-first writing rules
 
 The Issue is the requirement source of truth for its current Issue revision and MUST be
 understandable by a non-engineering reader. It is not the source for current implemented behavior.
-The agent MUST write the title, problem, goal, scope, acceptance criteria, constraints, edge cases,
-and release note in plain language focused on user impact and observable outcomes.
+The agent MUST write the title, problem or purpose, expected outcome, scope, applicable acceptance
+criteria, and release note in plain language focused on user impact and observable outcomes. Add
+constraints, edge cases, glossary entries, and open questions only when they carry information that
+changes the requirement or its verification.
 
 - MUST NOT add engineering terminology merely because it is familiar to the agent.
 - MAY use a technical term when it is necessary to define a constraint, behavior, risk, or
@@ -64,8 +162,8 @@ and release note in plain language focused on user impact and observable outcome
   schema, data format, protocol, API contract, content model, serialization format, or editor block
   format, the contract itself is requirement content and MUST NOT be moved to `Implementation Notes`
   merely because it is technical.
-- `Implementation Notes` MUST be the last Issue section. It is for technical context needed by
-  implementers, not a second copy of the requirement.
+- `Implementation Notes` MUST be the last Issue section when present. It is for technical context
+  needed by implementers, not a second copy of the requirement.
 
 Acceptance criteria SHOULD describe what a user, operator, or reviewer can observe. A technical
 test or internal check MAY be included when it is necessary evidence, but it MUST be accompanied by
@@ -114,7 +212,7 @@ reasonably determined.
 
 - **Audience and language:** The title, reader-facing sections, and `Release Note` use the user's
   preferred language and are understandable to a non-engineering reader.
-- **Plain-language outcome:** `Summary`, `Background / Problem`, and `Goal` explain the problem and
+- **Plain-language outcome:** `Problem / Purpose` and `Expected Outcome` explain the problem and
   desired result without requiring knowledge of the implementation.
 - **Technical-term scan:** Identify every acronym, framework name, API/class name, architecture
   term, test tool, and implementation verb that a non-engineering reader may not know. For each term
@@ -132,8 +230,16 @@ reasonably determined.
   the user-facing outcome it protects.
 - **Glossary completeness:** Use `Terms / Glossary` for every necessary technical term that cannot
   be explained inline. Use `None` only when no such terms remain.
-- **Structure:** Required sections appear in the canonical order, `Open Questions` uses the required
-  table shape, unresolved placeholders are removed, and `Implementation Notes` is the final section.
+- **Mode and representation:** Select one drafting shape, use its primary representation, and do
+  not require a Scenario, Contract, research evidence, or behavior-preservation section when that
+  shape does not need it.
+- **Structure:** Core sections appear in the canonical order, conditional sections appear only when
+  meaningful, `Open Questions` uses the required table shape when present, unresolved placeholders
+  are removed, and `Implementation Notes` is the final section when present.
+- **No duplication:** Each material requirement has one primary definition location. Summary-like,
+  rationale-like, or edge-case text is not repeated in multiple sections.
+- **Scenario fit:** Given/When/Then is used only for an event with an observable result. Field lists,
+  contracts, research questions, and routine implementation details use their appropriate form.
 - **Specification contract:** If the Issue is specification-type, verify that the actual contract,
   semantic-variant examples, and applicable round-trip, compatibility, error, or unknown-data rules
   are present in the Issue or in an exact versioned, directly linked specification artifact. A
@@ -249,35 +355,40 @@ routing rule, design questions, mixed-Issue handling, and examples, read
 
 ## Canonical Issue body
 
-Use these semantic sections in this order. The heading labels are illustrative semantic names and
-MAY be localized; the prose under each section is the current time-scoped requirement snapshot, not
-a placeholder for a comment thread or a claim about the current implementation.
+Use the following semantic order. The core sections are `Problem / Purpose`, `Expected Outcome`,
+`Scope`, `Acceptance Criteria`, `Release Note`, and `Workflow Metadata`. The other sections are
+conditional: include them only when they carry information that changes the requirement, its
+verification, or its handoff. Heading labels MAY be localized; the prose is the current
+time-scoped requirement snapshot, not a comment-thread transcript or a claim about current
+implementation behavior.
 
 ```markdown
-## Summary
+## Problem / Purpose
 
-<!-- One concise statement of the requirement. -->
+<!-- What problem exists, who or what is affected, and why it matters. -->
 
-## Background / Problem
+## Expected Outcome
 
-<!-- What problem exists, who/what is affected, and why it matters. -->
+<!-- What observable result or deliverable this Issue must produce. -->
 
-## Goal
+## Scenario(s)
 
-<!-- Observable outcome this Issue must deliver. -->
+<!-- Conditional: use only for event-driven observable behavior. -->
 
 ## Scope
 
-<!-- Included behavior and implementation boundaries. -->
+### In Scope
+
+<!-- What this Issue is responsible for. -->
+
+### Out of Scope
+
+<!-- Conditional: include only meaningful exclusions or delegated boundaries. -->
 
 ## Contract / Format Specification
 
 <!-- Required only for a specification-type Issue. Include the actual contract or an exact,
      versioned specification-artifact reference and at least one complete representative example. -->
-
-## Out of Scope
-
-<!-- Explicit exclusions. Write None only when there are no meaningful exclusions. -->
 
 ## Acceptance Criteria
 
@@ -285,21 +396,22 @@ a placeholder for a comment thread or a claim about the current implementation.
 
 ## Constraints
 
-- None
+<!-- Conditional: include only meaningful quality, security, compatibility, or operational limits. -->
 
 ## Edge Cases
 
-- None
+<!-- Conditional: include only alternate behavior that changes verification or user impact. -->
 
 ## Terms / Glossary
 
-- None
+<!-- Conditional: include only necessary terms not explained at first use. -->
 
 ## Open Questions
 
+<!-- Conditional: include only unresolved questions that affect delivery. -->
+
 | ID | Question | Blocking | Resolution |
 | --- | --- | --- | --- |
-| None | None | No | None |
 
 ## Release Note
 
@@ -326,15 +438,15 @@ None
 
 ## Implementation Notes
 
-- None
+<!-- Conditional: include only non-requirement technical handoff details; always keep this last. -->
 ```
 
-The template is a shape, not permission to retain unresolved placeholders. The `Contract / Format
-Specification` section is required only for a specification-type Issue. Before `Specifying` →
-`Ready`, replace every placeholder, mark acceptance criteria accurately, and resolve or explicitly
-classify every open question. A row with `Blocking: Yes` and no resolution prevents `Ready`. If a
-technical term is used, complete `Terms / Glossary`; keep internal implementation details in the
-final `Implementation Notes` section while keeping any required external contract in the requirement
+The template is a shape, not permission to retain unresolved placeholders or empty sections. Before
+`Specifying` → `Ready`, remove unused conditional sections, replace every remaining placeholder,
+mark acceptance criteria accurately, and resolve or explicitly classify every open question. A row
+with `Blocking: Yes` and no resolution prevents `Ready`. If a technical term is used, explain it at
+first use or complete `Terms / Glossary`; keep internal implementation details in the final
+`Implementation Notes` section while keeping any required external contract in the requirement
 sections or linked durable artifact.
 
 ## Release Note rules

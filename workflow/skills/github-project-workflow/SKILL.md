@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.6"
+  version: "1.7"
   tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
@@ -24,13 +24,91 @@ workflow supports one PR, multiple PRs, stacked PRs, milestones, releases, and h
 This skill is applicable when work is represented by a GitHub Issue and Project. For a purely
 local task with no tracked requirement, do not invent a Project lifecycle around it.
 
+## Skill Execution Contract
+
+Use this fixed planning loop before drafting or revising an Issue:
+
+1. Recover the current Issue, repository, and workflow state from their designated sources.
+2. Classify the drafting mode before choosing sections: ordinary requirement, specification,
+   research, bug, refactor, or initiative.
+3. Choose one primary representation for each material requirement and add only the conditional
+   sections needed by that mode.
+4. Write the requirement snapshot in the selected user language, keeping required technical
+   contracts and examples when they are the deliverable.
+5. Run the reader-first, provenance, duplication, and mode-specific completion gates.
+6. Perform GitHub mutations only within the explicit workflow authorization and only after the draft
+   passes the applicable gate.
+
+The drafting mode is a planning decision, not a new Issue Type, lifecycle Status, or Work Mode. Keep
+the existing native Issue Type and `Work Mode` metadata. Use the following primary representations:
+
+| Drafting mode | Primary representation | Minimum handoff |
+| --- | --- | --- |
+| Ordinary requirement | Observable outcome and scenario(s) | Problem, outcome, scope, acceptance |
+| Specification | Contract, field responsibilities, and semantic-variant examples | Contract, persistence/compatibility/error behavior, acceptance |
+| Research | Question, evidence, conclusion, and unresolved items | Bounded question, evidence plan, decision criteria |
+| Bug | Reproduction and actual-versus-expected behavior | Reproduction, expected result, regression verification |
+| Refactor | Behavior-preservation boundary and verification | Preserved behavior, technical boundary, validation |
+| Initiative | Product outcome and native child map | Parent outcome, scope, child Requirements, aggregate success |
+
+Do not force every Issue into Given/When/Then. Use it when an event produces an observable result;
+use a contract, rule, threshold, evidence record, or behavior-preservation statement when that is
+the actual requirement.
+
+### Issue output contract
+
+Use this English structure as the stable drafting template. Sections marked as conditional are
+included only when they carry information that changes the requirement. The published Issue prose
+and headings follow the selected user language; exact GitHub values, identifiers, commands, and
+machine-readable tokens remain unchanged.
+
+```text
+## Problem / Purpose
+
+## Expected Outcome
+
+## Scenario(s)                 <!-- conditional: observable behavior -->
+
+## Contract / Format Specification  <!-- conditional: specification deliverable -->
+
+## Scope
+### In Scope
+### Out of Scope                  <!-- conditional when meaningful -->
+
+## Acceptance Criteria
+
+## Constraints                    <!-- conditional when meaningful -->
+## Edge Cases                     <!-- conditional when behavior changes -->
+## Terms / Glossary               <!-- conditional when jargon remains -->
+## Open Questions                 <!-- conditional when unresolved -->
+
+## Release Note
+## Workflow Metadata
+## Implementation Notes           <!-- conditional; always last when present -->
+```
+
+Each requirement MUST have one primary definition location. Other sections may reference or verify
+it, but MUST NOT repeat the complete requirement. Do not add empty sections merely to satisfy this
+template. Keep class names, parser choices, package choices, commands, database mechanics, and test
+framework choices out of requirement sections unless they change the external requirement.
+
+### Ready completion gate
+
+Before `Specifying` → `Ready`, verify the selected drafting mode, the selected language, the primary
+representation, the applicable acceptance form, the scope boundary, and the provenance of material
+decisions. A specification Issue additionally requires its actual contract, representative semantic
+variants, and applicable persistence, round-trip, compatibility, error, and unknown-data behavior.
+An ordinary UI Issue does not require a data contract or internal architecture merely because this
+workflow has a contract mode. Any blocking semantic, compatibility, permission, security, or
+irreversible-data question keeps the Issue in `Specifying`.
+
 ## Reader-first Issue Gate
 
 Every Issue create or revision MUST pass a reader-first gate before any GitHub Issue mutation:
 
 1. Identify the intended reader and selected Issue language. Use plain language in the title,
-   `Summary`, `Background / Problem`, `Goal`, `Scope`, `Acceptance Criteria`, `Constraints`,
-   `Edge Cases`, and `Release Note`.
+   `Problem / Purpose`, `Expected Outcome`, `Scope`, applicable acceptance criteria, and
+   `Release Note`; add conditional sections only when they carry requirement information.
 2. Explain each necessary technical term at its first reader-facing use. Exact API names, commands,
    framework names, and identifiers may remain when necessary, but they must be paired with a plain
    description or moved to `Terms / Glossary` / `Implementation Notes`.

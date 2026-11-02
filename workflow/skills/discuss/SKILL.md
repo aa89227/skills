@@ -10,10 +10,43 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Discussion Mode
+
+## Skill Execution Contract
+
+Use the same execution contract for every discussion:
+
+1. Identify the question's time scope: current implementation, current requirement, or historical
+   rationale.
+2. Classify the work before choosing a format: behavior, quality constraint, domain rule, external
+   contract, research, or implementation detail.
+3. Choose one primary representation for each material requirement. Do not force every discussion
+   into Given/When/Then.
+4. Resolve only consequential unknowns, preserve provenance, and stop when the material decision is
+   stable.
+5. Report confirmed decisions, agent proposals, unresolved questions, and the next step in the
+   user's language.
+
+The agent MUST keep the discussion read-only except for the configured decision-record write. It
+MUST NOT turn a complete draft into a user-confirmed decision and MUST NOT continue asking questions
+only to enumerate routine variants or internal implementation choices.
+
+### Choose the primary representation
+
+| Need | Primary representation |
+| --- | --- |
+| An event produces an observable result | Scenario or Given/When/Then |
+| A persisted or consumed format must be defined | Contract, field responsibilities, and representative examples |
+| Allowed or forbidden states must be defined | Domain rule with positive and negative cases |
+| Quality or operational limits must be defined | Observable threshold or constraint |
+| Evidence is needed before a decision | Research question, evidence, conclusion, and open questions |
+| Internal implementation is routine | Agent-selected implementation note, not a user decision |
+
+These representations may coexist in one discussion, but they should not repeat the same
+requirement verbatim.
 
 ## Instruction Retention
 
@@ -152,6 +185,38 @@ deliverable at the appropriate handoff point. It must not keep discussion open m
 every combination or internal detail; cover the semantic branches that change the contract and
 defer routine implementation choices.
 
+### Question gate
+
+The agent MAY choose ordinary defaults and complete a routine draft without asking. It MUST ask a
+focused question or pause only when competing choices change user-visible meaning, compatibility or
+migration, security or privacy, cost or operational risk, irreversible data behavior, or conflict
+with an explicit requirement or repository evidence. It MUST NOT ask the user to choose a class,
+method, package, parser algorithm, file layout, test mechanic, or similar routine detail unless it
+creates one of those consequences.
+
+### Discussion output contract
+
+Use this English structure as the stable output template. The prose and headings in the actual
+response MAY be localized to the user's language; exact identifiers and machine-readable values
+remain unchanged.
+
+```text
+## Discussion Summary
+
+## User-Confirmed Decisions
+
+## Proposed Defaults
+
+## Open Questions
+
+## Alternatives Considered
+
+## Next Step
+```
+
+Use `User-Confirmed Decisions` only for explicit user decisions. Put agent-completed routine choices
+under `Proposed Defaults` or omit them when they do not affect the handoff.
+
 ## Discussion Workflow
 
 1. Identify whether the request concerns current implementation behavior, a time-scoped requirement,
@@ -168,6 +233,25 @@ defer routine implementation choices.
 7. Recommend an approach when the available evidence supports one.
 8. Continue until no material decisions remain unresolved, or clearly mark the record as proposed,
    deferred, no-decision, or abandoned.
+
+Before handing control back, verify that the primary representation is clear, each material item has
+provenance, consequential unresolved questions are explicit, and no implementation or external
+mutation was performed. If a specification draft is complete enough for handoff, provide the
+contract and representative semantic-variant examples instead of asking about every combination.
+
+Correct example:
+
+```text
+The parser library is an implementation choice, so I will select one that fits the repository.
+The persisted field meaning and compatibility behavior are requirement decisions, so I will ask
+about them only if the available evidence does not establish a safe default.
+```
+
+Incorrect example:
+
+```text
+Which class name, JSON library, and private helper method should the implementation use?
+```
 
 Use the runtime's structured user-input mechanism when helpful. Use it only to gather requirements
 or preferences, never to request implementation approval.

@@ -8,10 +8,52 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Ask Mode
+
+## Skill Execution Contract
+
+Use this fixed loop:
+
+1. Identify the single question and its time scope.
+2. Use the available context first, then perform only the read-only inspection needed to answer it.
+3. Separate verified facts, repository evidence, inference, and uncertainty.
+4. Lead with the answer in the user's language and stop when the question is answered.
+
+`ask` MUST remain read-only. It MUST NOT turn a question about current behavior into a requirement
+decision, implementation proposal, Issue update, or broader design discussion. If the user asks
+whether behavior or an external contract should change, route the discussion to `workflow:discuss`.
+
+### Answer output contract
+
+Use this English structure as the stable output template. The actual response MAY localize the
+headings and prose to the user's language.
+
+```text
+## Answer
+
+## Evidence
+
+## Limitations or Uncertainty
+```
+
+The final answer is complete when it directly answers the question, cites the relevant evidence when
+available, states material uncertainty, and has performed no mutation.
+
+Correct example:
+
+```text
+Yes. The current implementation reads the value from the repository configuration.
+Evidence: `path/to/config` defines the setting and `path/to/test` verifies the fallback.
+```
+
+Incorrect example:
+
+```text
+The current behavior is probably fine; I recommend redesigning it with a new configuration model.
+```
 
 ## Instruction Retention
 
