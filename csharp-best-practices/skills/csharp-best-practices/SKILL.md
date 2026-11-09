@@ -3,16 +3,17 @@ name: csharp-best-practices
 description: |
   This skill should be used when writing or reviewing C# code, asking about modern C# syntax,
   async/await patterns, LINQ best practices, record/required patterns, pattern matching,
-  C# dependency installation, or C# 12/13/14 language features. Trigger phrases: "write C# code", "review C#",
-  "C# best practice", "async pattern", "pattern matching", "C# 14 feature",
-  "extension members", "field keyword", "collection expressions", "NuGet package version",
+  C# dependency installation, or C# 12/13/14/15 language features. Trigger phrases: "write C# code", "review C#",
+  "C# best practice", "async pattern", "pattern matching", "C# 14 feature", "C# 15 feature",
+  "extension members", "field keyword", "collection expressions", "union types", "closed hierarchies",
+  "extension indexers", "labeled break", "NuGet package version",
   "install C# dependency".
 license: MIT
 metadata:
   author: aa89227
-  version: "3.1"
+  version: "3.2"
   tags: ["csharp", "dotnet", "best-practices", "language-reference"]
-  trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs", "pattern matching", "NuGet", "package version"]
+  trigger_keywords: ["C#", "csharp", "dotnet", "async", "LINQ", "record", ".cs", "pattern matching", "C# 15", "union types", "closed hierarchies", "extension indexers", "NuGet", "package version"]
 ---
 
 # C# Best Practices
@@ -26,7 +27,26 @@ Reread it only when the file may have changed, the current context no longer con
 instructions (for example after context compaction or a new session), the instructions are
 ambiguous or conflicting, or exact wording must be verified.
 
-**Latest version:** C# 14 (.NET 10, Nov 2025)
+**Default baseline:** C# 14 on .NET 10.
+
+**Conditional extension:** C# 15 non-preview features on .NET 11 when the repository's effective
+language version and SDK support them. This skill does not enable or recommend C# preview features.
+
+## Target Framework and Language Version Gate
+
+Before suggesting syntax newer than the project's baseline, inspect the project's `TargetFramework`
+or `TargetFrameworks`, any explicit `<LangVersion>` in the project or `Directory.Build.*` files, and
+the SDK selected by `global.json`.
+
+- An explicit `LangVersion` is authoritative. If it is `14.0` or lower, do not use C# 15 syntax.
+- Without an explicit override, treat `net10.0` as C# 14 and `net11.0` with a compatible .NET 11
+  SDK as C# 15.
+- Do not set `LangVersion` to `latest`; it can vary between machines. Do not silently change a
+  target framework, SDK pin, or language version just to use a newer feature.
+- Do not recommend a language version newer than the one associated with the target TFM unless the
+  project's supported compiler/runtime combination and the specific feature have been verified.
+- The C# 15 section below covers only non-preview features. Do not enable `LangVersion=preview` or
+  the C# 15 memory-safety preview to use it.
 
 ## Core Rules
 
@@ -40,6 +60,24 @@ ambiguous or conflicting, or exact wording must be verified.
 - Avoid `async void`; prefer `async Task` or `async ValueTask`.
 - Primary constructor parameters are captures, **not** fields — assign to a field when mutation or multiple access is needed.
 - C# 14 span overload resolution may bind `array.Contains(x)` to `MemoryExtensions.Contains` — call `Enumerable.Contains()` explicitly in Expression trees.
+
+## C# 15 Non-Preview Features (Conditional)
+
+Use this section only when the target project passes the language-version gate above. These features
+are available in the .NET 11 SDK without `LangVersion=preview`; the .NET 11 SDK may still be a
+pre-release in the repository's environment, so verify its support policy before adopting it.
+
+| Feature | Example | Best-practice boundary |
+|---|---|---|
+| Collection expression arguments | `List<T> items = [with(capacity: 16), .. values];` | Use constructor/factory arguments when they express a real capacity or comparer requirement; do not use them as decorative syntax. |
+| Union types | `public union Result(Success, Failure);` | Use when the set of cases is intentionally finite and callers should handle every case exhaustively. |
+| Closed hierarchies | `public closed record class State;` | Use for a deliberately closed family; mark intermediate descendants `closed` when exhaustive matching must continue down the hierarchy. |
+| Extension indexers | `sequence[index]` from an `extension` block | Expose indexing only when the lookup semantics and cost are unsurprising; make an expensive enumeration explicit instead. |
+| Labeled `break` / `continue` | `continue outer;` | Prefer it over flag variables or `goto` for genuinely nested control flow, but extract a method when the loop remains difficult to read. |
+| Non-virtual static interface members | `IMeasurement.ToMeters(value)` | Use for static helpers that do not require instance defaults, `static abstract`, `static virtual`, or protected interface behavior. |
+
+Memory safety, `safe`, `unsafe(expression)`, `updated-memory-safety-rules`, and any other feature
+that requires the preview language version are outside this skill's C# 15 guidance.
 
 ## Dependency Installation
 
@@ -66,7 +104,7 @@ one from this skill, another example, or an older project.
   do not silently substitute a remembered version. Honor an explicit user or repository pin when
   one already exists.
 
-## C# 14 New Features Summary
+## C# 14 New Features Summary (Default .NET 10 Baseline)
 
 | Feature | Example | Notes |
 |---|---|---|
@@ -171,5 +209,6 @@ For detailed rules, pitfalls, and comparisons:
 Complete, runnable `.cs` examples in `examples/`:
 - **`examples/core-example.cs`** — High-density example: required init, IReadOnlyList, XML docs, async/await, CancellationToken, list patterns, Parallel.ForEachAsync, record, record struct
 - **`examples/csharp14-features.cs`** — Extension members, partial constructors/events, compound assignment, null-conditional assignment, field keyword, unbound generic nameof
+- **`examples/csharp15-features.cs`** — Conditional .NET 11/C# 15 examples: collection expression arguments, union types, closed hierarchies, extension indexers, labeled jumps, and static interface members. Do not compile it with a C# 14 compiler.
 - **`examples/feature-highlights.cs`** — C# 12/13 features: primary constructors, collection expressions, default lambda params, params collections, Lock, raw string literals, IAsyncEnumerable
 - **`examples/pattern-matching.cs`** — Switch expression, property/relational/list/tuple/type patterns, pattern in if/is

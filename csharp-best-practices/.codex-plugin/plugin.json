@@ -1,7 +1,7 @@
 {
   "name": "csharp-best-practices",
-  "version": "2.29.0",
-  "description": "C# 14 best practices skill plugin with dotnet CLI agent.",
+  "version": "2.30.0",
+  "description": "C# 14/.NET 10 baseline with conditional non-preview C# 15/.NET 11 best practices, plus dotnet CLI skills.",
   "author": {
     "name": "aa89227",
     "email": "aa89227@gmail.com",
@@ -9,17 +9,17 @@
   },
   "interface": {
     "displayName": "C# Best Practices",
-    "shortDescription": "C# 14 best practices, MTP testing, and dotnet CLI workflows.",
-    "longDescription": "A collection of C#/.NET skills covering modern C# 14 language features, performance tuning, dotnet CLI operations, project initialization, test conventions, Microsoft Testing Platform runner and CI patterns, API and MongoDB integration testing with Verify and Testcontainers, MongoDB driver patterns, Aspire resources, Playwright E2E testing, Microsoft Agent Framework, and file-based apps.",
+    "shortDescription": "C# 14/.NET 10 baseline, conditional non-preview C# 15, MTP testing, and dotnet CLI workflows.",
+    "longDescription": "A collection of C#/.NET skills covering modern C# 14 language features, conditional non-preview C# 15 features for .NET 11, performance tuning, dotnet CLI operations, project initialization, test conventions, Microsoft Testing Platform runner and CI patterns, API and MongoDB integration testing with Verify and Testcontainers, MongoDB driver patterns, Aspire resources, Playwright E2E testing, Microsoft Agent Framework, and file-based apps.",
     "developerName": "aa89227",
     "category": "Development",
     "defaultPrompt": [
-      "Review this C# code against modern C# 14 best practices",
+      "Review this C# code against modern C# 14 best practices or conditional C# 15 guidance",
       "Write integration tests for this API using Verify snapshots",
       "Configure Microsoft Testing Platform and run the tests for this .NET solution"
     ],
     "capabilities": [
-      "Write and review C# code with modern C# 14 idioms",
+      "Write and review C# code with modern C# 14 idioms and conditional non-preview C# 15 features",
       "Run dotnet CLI builds, tests, and publishes with structured output",
       "Configure Microsoft Testing Platform runners, extensions, and CI reporting",
       "Design MongoDB, API, and Playwright E2E tests with Testcontainers and Verify"

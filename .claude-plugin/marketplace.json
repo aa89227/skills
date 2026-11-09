@@ -8,7 +8,7 @@
     {
       "name": "csharp-best-practices",
       "source": "./csharp-best-practices",
-      "description": "C# 14 latest version best practices and patterns. Comprehensive guide with code examples, anti-patterns, and design patterns.",
+      "description": "C# 14/.NET 10 baseline with conditional non-preview C# 15/.NET 11 best practices and patterns. Comprehensive guide with code examples, anti-patterns, and design patterns.",
       "author": {
         "name": "aa89227"
       }
