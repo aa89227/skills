@@ -1,7 +1,9 @@
 ---
 name: herdr-supervisor
 description: |
-  Use only when the user explicitly invokes this skill to delegate work through HERDR.
+  Use only when the user explicitly invokes this skill to delegate work through HERDR, or when the
+  user explicitly invokes workflow:review (including a GitHub workflow pre-review gate authorized
+  by that request) and that skill selects HERDR as its review backend.
   Act as a dispatch-only supervisor: assign named HERDR agents for implementation,
   investigation, or explicitly requested direct-dialogue planning, then stop managing them
   until the user gives a new explicit instruction. Do not use native subagents or the regular
@@ -9,16 +11,19 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["herdr", "supervisor", "delegation", "agent", "worktree", "workflow"]
 ---
 
 # HERDR Supervisor
 
-Use this skill only after the user explicitly invokes it. It turns the current agent into a
-dispatch-only supervisor. The supervisor may inspect repository context read-only, classify the
-request, choose a delegation shape, and send an initial task to a HERDR agent. It must not
-implement the task itself or use the harness's native subagent/delegation capability.
+Use this skill only after the user explicitly invokes it, or when an explicitly invoked
+`workflow:review` run selects HERDR as its backend. A `workflow:github-project-workflow` operation
+may satisfy that explicit authorization when it invokes the configured pre-review gate for the
+user-authorized operation. It turns the current agent into a dispatch-only supervisor. The
+supervisor may inspect repository context read-only, classify the request, choose a delegation
+shape, and send an initial task to a HERDR agent. It must not implement the task itself or use the
+harness's native subagent/delegation capability.
 
 ## Enter supervisor mode
 
@@ -43,8 +48,9 @@ implement the task itself or use the harness's native subagent/delegation capabi
    pane/workspace identifiers.
 
 3. If the user has not specified an agent kind, ask before creating a pane, agent, or Worktree.
-   Do not silently choose `codex` or another default. Use the kind the user selects from the
-   currently supported HERDR list.
+   For an internal `workflow:review` dispatch, a project review configuration may provide the
+   agent kind; otherwise do not silently choose `codex` or another default. Use the kind selected
+   by the user or explicitly recorded by the project from the currently supported HERDR list.
 
 ## Dispatch contract
 
@@ -55,6 +61,14 @@ The supervisor is not an implementation agent. It may do the following before di
 - create the HERDR layout and Worktree required by that classification;
 - generate a short, semantic, unique agent name;
 - send one initial prompt to the named agent.
+
+An explicitly invoked `workflow:review` may use this supervisor as an investigation backend. In
+that path, the project `.workflow/review-config.md` must select `backend: herdr` and a supported
+`agent_kind`; dispatch one read-only reviewer task per selected review rule, tell the reviewer to
+use the `workflow-review get-task` / `submit` protocol, and let the external review artifact
+directory be the result channel. The supervisor must not wait for pane output or read reviewer
+reports; the primary review skill owns `workflow-review wait` and aggregation. Standalone HERDR
+dispatch remains explicit-only and keeps the ordinary user-selected agent-kind requirement.
 
 It must not edit repository files, implement a delegated task, use a native subagent tool, or
 silently turn a planning conversation into implementation.

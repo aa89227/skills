@@ -65,8 +65,9 @@ GitHub-native base/head branch relationship is authoritative.
   design handoff before creating a runtime implementation PR.
 - A PR becoming Ready for Review MUST NOT by itself move the Issue to `In Review`.
 - Move the Issue to `In Review` only when all required implementation slices and PRs are reviewable,
-  required checks pass, known limitations are recorded, and the Issue release note matches the
-  actual result.
+  required checks pass, known limitations are recorded, the Issue release note matches the actual
+  result, and the current project-specific `workflow:review` gate has passed. The internal gate is
+  not a human GitHub approval and does not replace the selected Review Mode.
 - In `Collaborative` mode, human approval for `In Review` → `Ready to Merge` MUST be the native
   GitHub `APPROVED` review state on every required PR in the Issue, including every required stack
   slice. One approved PR does not approve an incomplete stack.

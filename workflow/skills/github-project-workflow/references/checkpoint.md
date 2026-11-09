@@ -116,7 +116,7 @@ When no hard-pause condition overrides the normal path, use the following determ
 | `Inbox` | `Agent: organize the Issue and move to Specifying when requirement work starts.` |
 | `Specifying` | `Agent: update the current requirement snapshot`; when criteria are complete, `Human: set Project Status to Ready`. |
 | `Ready` | `Agent: run the Design System gate check when scope is non-`None`; begin the approved Work Mode and change to `In Progress` only when the gate is `Open` and work actually starts. |
-| `In Progress` | `Agent: continue the approved implementation or discovery work and prepare the complete result for review.` |
+| `In Progress` | `Agent: continue the approved implementation or discovery work, complete the project-specific workflow:review gate when applicable, and prepare the complete result for human review.` |
 | `In Review` | `Human: review the complete result`; then provide the required approval for the selected Review Mode or discovery acceptance. |
 | `Ready to Merge` | `Agent: verify approval, checks, target branch, and integrate using the GitHub merge policy.` |
 | `Done` | `None`; terminal. Close the Issue if not already closed. |

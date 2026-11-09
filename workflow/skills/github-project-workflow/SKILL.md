@@ -195,6 +195,10 @@ choice.
   [references/lifecycle.md](references/lifecycle.md) before changing Project Status.
 - MUST emit a `Workflow Checkpoint` after every lifecycle status change and at session end; MUST
   follow [references/checkpoint.md](references/checkpoint.md) for the format and hard-pause rules.
+- MUST run `workflow:review` as the internal pre-review gate before moving repository-artifact work
+  from `In Progress` to `In Review`: the project review rules must exist, every selected required
+  rule must complete, and no unresolved `Blocking` finding may remain. This internal run is
+  ephemeral and does not replace a human GitHub review or approval.
 - MUST stop the transition and report the missing condition when an entry criterion, exit
   criterion, allowed transition, or required human approval is absent.
 - MUST preserve unknown local changes. MUST NOT reset, clean, restore, overwrite, or destructively
@@ -264,6 +268,11 @@ The following are the workflow's human approval gates:
   `Research`/`Prototype` item with no repository artifact, the human may approve the recorded
   result by directly setting its Project Status to `Ready to Merge`.
 
+Before `In Progress` → `In Review` for repository-artifact work, run the project-specific
+`workflow:review` gate. A missing project rule set, incomplete task, failed/blocked required task,
+missing report, or unresolved blocking finding keeps the Issue in `In Progress`. Passing this gate
+only makes the implementation ready for human review; it does not create a native GitHub approval.
+
 Silence, lack of comments, passing CI, passing tests, an agent's own review, another agent's
 opinion, an existing PR, or completed code MUST NOT be treated as approval. Every Issue that
 produces a repository artifact MUST record `Review Mode: Collaborative` or `Review Mode: Solo
@@ -310,6 +319,8 @@ experiment; if work has not started, keep the truthful earlier status.
 Read only the references needed for the current operation:
 
 - Lifecycle transition, status criteria, approval, or cancellation: [lifecycle.md](references/lifecycle.md)
+- Project-specific independent review setup, task dispatch, or pre-review gate:
+  [workflow:review](../review/SKILL.md)
 - Design System routing, approval, metadata, mixed Issues, or `Ready` → `In Progress` gate:
   [design-system-handoff.md](references/design-system-handoff.md)
 - Checkpoint output, pause/resume behavior, or next-action reporting: [checkpoint.md](references/checkpoint.md)

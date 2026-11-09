@@ -1,0 +1,873 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+# This is the reference shell engine for workflow:review. Package installation should expose it
+# through the stable `workflow-review` command rather than calling a versioned plugin-cache path.
+
+review_store_root="${WORKFLOW_REVIEW_ROOT:-/tmp/workflow-reviews}"
+while [[ "$review_store_root" != / && "$review_store_root" == */ ]]; do
+  review_store_root="${review_store_root%/}"
+done
+[[ -n "$review_store_root" ]] || review_store_root=/
+readonly review_store_root
+readonly command_name="workflow-review"
+active_start_directory=''
+
+die() {
+  printf '%s: %s\n' "$command_name" "$*" >&2
+  exit 1
+}
+
+cleanup_partial_start() {
+  if [[ -n "$active_start_directory" && -d "$active_start_directory" && ! -L "$active_start_directory" ]] \
+    && is_safe_run_directory_path "$active_start_directory"; then
+    rm -rf -- "$active_start_directory"
+  fi
+}
+
+require_jq() {
+  command -v jq >/dev/null 2>&1 || die "jq is required for machine-readable output"
+}
+
+require_flock() {
+  command -v flock >/dev/null 2>&1 || die "flock is required for concurrent review task coordination"
+}
+
+require_hash_tool() {
+  if command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1; then
+    return 0
+  fi
+  die "sha256sum or shasum is required for review target invalidation"
+}
+
+hash_stream() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{ print $1 }'
+  else
+    shasum -a 256 | awk '{ print $1 }'
+  fi
+}
+
+validate_review_id() {
+  local review_id="$1"
+  [[ "$review_id" =~ ^review-[a-f0-9]{16,64}$ ]] || die "invalid review id: $review_id"
+}
+
+validate_rule_id() {
+  local rule_id="$1"
+  [[ "$rule_id" =~ ^[a-z][a-z0-9-]*$ ]] || die "invalid rule id: $rule_id"
+}
+
+validate_task_id() {
+  local task_id="$1"
+  [[ "$task_id" =~ ^task-[a-f0-9]{16,64}$ ]] || die "invalid task id: $task_id"
+}
+
+random_hex() {
+  od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
+}
+
+random_review_id() {
+  printf 'review-%s' "$(random_hex)"
+}
+
+random_task_id() {
+  printf 'task-%s' "$(random_hex)"
+}
+
+read_value() {
+  local property_name="$1"
+  local properties_file="$2"
+  sed -n "s/^${property_name}=//p" "$properties_file" | head -n 1
+}
+
+write_value() {
+  local property_name="$1"
+  local property_value="$2"
+  local properties_file="$3"
+  local temporary_file
+
+  temporary_file="$(mktemp "${properties_file}.XXXXXX")"
+  awk -v key="$property_name" -v value="$property_value" '
+    BEGIN { updated = 0 }
+    index($0, key "=") == 1 {
+      print key "=" value
+      updated = 1
+      next
+    }
+    { print }
+    END {
+      if (!updated) print key "=" value
+    }
+  ' "$properties_file" > "$temporary_file"
+  mv -- "$temporary_file" "$properties_file"
+}
+
+frontmatter_value() {
+  local metadata_file="$1"
+  local metadata_key="$2"
+
+  awk -v key="$metadata_key" '
+    NR == 1 && $0 == "---" { inside = 1; next }
+    inside && $0 == "---" { exit }
+    inside {
+      prefix = key ":"
+      if (index($0, prefix) == 1) {
+        value = substr($0, length(prefix) + 1)
+        sub(/^[[:space:]]+/, "", value)
+        sub(/[[:space:]]+$/, "", value)
+        print value
+        exit
+      }
+    }
+  ' "$metadata_file"
+}
+
+validate_rule_file() {
+  local rule_file="$1"
+  local expected_rule_id="$2"
+  local rule_id
+  local rule_name
+  local rule_type
+  local enabled
+  local required
+
+  [[ "$(sed -n '1p' "$rule_file")" = "---" ]] || die "rule is missing frontmatter: $rule_file"
+
+  rule_type="$(frontmatter_value "$rule_file" type)"
+  rule_id="$(frontmatter_value "$rule_file" id)"
+  rule_name="$(frontmatter_value "$rule_file" name)"
+  enabled="$(frontmatter_value "$rule_file" enabled)"
+  required="$(frontmatter_value "$rule_file" required)"
+
+  [[ "$rule_type" = "review-rule" ]] || die "rule type must be review-rule: $rule_file"
+  [[ "$rule_id" = "$expected_rule_id" ]] || die "rule id does not match file name: $rule_file"
+  [[ -n "$rule_name" ]] || die "rule name is missing: $rule_file"
+  [[ "$enabled" = true || "$enabled" = false ]] || die "enabled must be true or false: $rule_file"
+  [[ "$required" = true || "$required" = false ]] || die "required must be true or false: $rule_file"
+  validate_rule_id "$rule_id"
+  [[ "$rule_name" != *$'\t'* ]] || die "rule name may not contain tabs: $rule_file"
+}
+
+ensure_store_root() {
+  case "$review_store_root" in
+    /tmp|/tmp/*) ;;
+    *) die "review artifact root must be under /tmp: $review_store_root" ;;
+  esac
+  case "$review_store_root" in
+    */../*|*/..|*/./*|*/.) die "review artifact root may not contain . or .. path segments: $review_store_root" ;;
+  esac
+
+  local existing_parent="$review_store_root"
+  while [[ ! -e "$existing_parent" && ! -L "$existing_parent" ]]; do
+    [[ "$existing_parent" != /tmp && "$existing_parent" != / ]] || break
+    existing_parent="${existing_parent%/*}"
+    [[ -n "$existing_parent" ]] || existing_parent=/
+  done
+  [[ -d "$existing_parent" ]] || die "review artifact root parent is not a directory: $existing_parent"
+
+  local resolved_parent
+  resolved_parent="$(cd -- "$existing_parent" && pwd -P)" \
+    || die "unable to resolve review artifact root parent: $existing_parent"
+  case "$resolved_parent" in
+    /tmp|/tmp/*) ;;
+    *) die "review artifact root parent resolves outside /tmp: $resolved_parent" ;;
+  esac
+
+  [[ ! -L "$review_store_root" ]] || die "review artifact root may not be a symlink: $review_store_root"
+  mkdir -p -- "$review_store_root"
+  [[ -d "$review_store_root" ]] || die "review artifact root is not a directory: $review_store_root"
+  local resolved_store_root
+  resolved_store_root="$(cd -- "$review_store_root" && pwd -P)"
+  case "$resolved_store_root" in
+    /tmp|/tmp/*) ;;
+    *) die "review artifact root resolves outside /tmp: $resolved_store_root" ;;
+  esac
+}
+
+is_safe_run_directory_path() {
+  local candidate="$1"
+  local expected_prefix="${review_store_root%/}/review-"
+  local resolved_store_root
+  local resolved_directory
+
+  [[ -d "$candidate" && ! -L "$candidate" ]] || return 1
+  [[ "$candidate" = "$expected_prefix"* ]] || return 1
+  [[ ! -L "$review_store_root" ]] || return 1
+
+  resolved_store_root="$(cd -- "$review_store_root" 2>/dev/null && pwd -P)" || return 1
+  resolved_directory="$(cd -- "$candidate" 2>/dev/null && pwd -P)" || return 1
+  case "$resolved_store_root" in
+    /tmp|/tmp/*) ;;
+    *) return 1 ;;
+  esac
+  case "$resolved_directory" in
+    "$resolved_store_root"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+resolve_project_root() {
+  local requested_root="$1"
+  cd -- "$requested_root" 2>/dev/null && pwd -P || die "project root does not exist: $requested_root"
+}
+
+run_directory() {
+  local review_id="$1"
+  validate_review_id "$review_id"
+  local directory="${review_store_root}/${review_id}"
+  [[ -d "$directory" ]] || die "review run not found: $review_id"
+  [[ ! -L "$directory" ]] || die "review run may not be a symlink: $review_id"
+  is_safe_run_directory_path "$directory" \
+    || die "review run resolves outside the artifact root or /tmp: $review_id"
+  printf '%s\n' "$directory"
+}
+
+run_property_file() {
+  local run_directory_path="$1"
+  printf '%s/run.env\n' "$run_directory_path"
+}
+
+rules_file() {
+  local run_directory_path="$1"
+  printf '%s/rules.tsv\n' "$run_directory_path"
+}
+
+rule_snapshot() {
+  local run_directory_path="$1"
+  local rule_id="$2"
+  printf '%s/rules/%s.md\n' "$run_directory_path" "$rule_id"
+}
+
+rule_row() {
+  local run_directory_path="$1"
+  local requested_rule_id="$2"
+  awk -F '\t' -v id="$requested_rule_id" '$1 == id { print; exit }' "$(rules_file "$run_directory_path")"
+}
+
+task_file_for_rule() {
+  local run_directory_path="$1"
+  local requested_rule_id="$2"
+  local task_file
+  local task_rule_id
+  local task_directory
+
+  [[ -d "$run_directory_path/tasks" ]] || return 0
+  for task_directory in "$run_directory_path"/tasks/task-*; do
+    [[ -d "$task_directory" ]] || continue
+    task_file="$task_directory/task.env"
+    [[ -f "$task_file" ]] || continue
+    task_rule_id="$(read_value rule_id "$task_file")"
+    if [[ "$task_rule_id" = "$requested_rule_id" ]]; then
+      printf '%s\n' "$task_file"
+      return 0
+    fi
+  done
+}
+
+task_file_for_id() {
+  local run_directory_path="$1"
+  local requested_task_id="$2"
+  local task_file
+  local task_id
+  local task_directory
+
+  [[ -d "$run_directory_path/tasks" ]] || return 0
+  for task_directory in "$run_directory_path"/tasks/task-*; do
+    [[ -d "$task_directory" ]] || continue
+    task_file="$task_directory/task.env"
+    [[ -f "$task_file" ]] || continue
+    task_id="$(read_value task_id "$task_file")"
+    if [[ "$task_id" = "$requested_task_id" ]]; then
+      printf '%s\n' "$task_file"
+      return 0
+    fi
+  done
+}
+
+target_commit() {
+  local project_root="$1"
+  local head_commit
+  head_commit="$(git -C "$project_root" rev-parse HEAD 2>/dev/null || true)"
+
+  if [[ -n "$head_commit" ]]; then
+    local fingerprint
+    fingerprint="$({
+      printf 'head=%s\n' "$head_commit"
+      git -C "$project_root" diff --no-ext-diff --binary HEAD
+      git -C "$project_root" ls-files --others --exclude-standard -z |
+        while IFS= read -r -d '' relative_path; do
+          local file_path="${project_root}/${relative_path}"
+          printf 'untracked=%s\0' "$relative_path"
+          if [[ -f "$file_path" ]]; then
+            cksum "$file_path"
+          elif [[ -L "$file_path" ]]; then
+            printf 'symlink\n'
+          else
+            printf 'missing\n'
+          fi
+        done
+    } | hash_stream)"
+    printf 'git:%s:%s\n' "$head_commit" "$fingerprint"
+  else
+    local fingerprint
+    local file_path
+    local -a project_files=()
+    shopt -s dotglob globstar nullglob
+    project_files=("$project_root"/**/*)
+    shopt -u dotglob globstar nullglob
+    fingerprint="$({
+      for file_path in "${project_files[@]}"; do
+        [[ -f "$file_path" ]] || continue
+        case "$file_path" in
+          "$project_root/.git/"*) continue ;;
+        esac
+        printf 'file=%s\0' "$file_path"
+        cksum "$file_path"
+      done
+    } | hash_stream)"
+    printf 'files:%s\n' "$fingerprint"
+  fi
+}
+
+start_run() {
+  require_jq
+  require_hash_tool
+  ensure_store_root
+
+  local project_root='.'
+  local requested_rule_id
+  local -a selected_rule_ids=()
+  local -A selected_rule_seen=()
+
+  while (($# > 0)); do
+    case "$1" in
+      --project-root)
+        (($# >= 2)) || die "--project-root needs a value"
+        project_root="$2"
+        shift 2
+        ;;
+      --rule-id)
+        (($# >= 2)) || die "--rule-id needs a value"
+        validate_rule_id "$2"
+        if [[ -z "${selected_rule_seen[$2]+set}" ]]; then
+          selected_rule_ids+=("$2")
+          selected_rule_seen[$2]=1
+        fi
+        shift 2
+        ;;
+      --)
+        shift
+        (($# == 0)) || die "unexpected argument after --: $1"
+        ;;
+      *)
+        die "unknown start argument: $1"
+        ;;
+    esac
+  done
+
+  project_root="$(resolve_project_root "$project_root")"
+  local rule_directory="${project_root}/.workflow/review-rules"
+  [[ -d "$rule_directory" ]] || die "project review rules are not configured: $rule_directory"
+
+  shopt -s nullglob
+  local -a rule_files=("${rule_directory}"/*.md)
+  shopt -u nullglob
+  ((${#rule_files[@]} > 0)) || die "project review rules are empty: $rule_directory"
+
+  local review_id
+  local run_directory_path
+  local rule_file
+  local file_rule_id
+  local file_rule_name
+  local file_enabled
+  local file_required
+  local selected_count=0
+  local -A selected_rule_found=()
+  local -A available_rule_seen=()
+  local -A available_rule_enabled=()
+  local -A available_rule_required=()
+  local -A available_rule_name=()
+  local enabled_rule_count=0
+
+  for rule_file in "${rule_files[@]}"; do
+    file_rule_id="$(basename "$rule_file" .md)"
+    validate_rule_file "$rule_file" "$file_rule_id"
+    file_rule_name="$(frontmatter_value "$rule_file" name)"
+    file_enabled="$(frontmatter_value "$rule_file" enabled)"
+    file_required="$(frontmatter_value "$rule_file" required)"
+    available_rule_seen[$file_rule_id]=1
+    available_rule_enabled[$file_rule_id]="$file_enabled"
+    available_rule_required[$file_rule_id]="$file_required"
+    available_rule_name[$file_rule_id]="$file_rule_name"
+    [[ "$file_enabled" = true ]] && enabled_rule_count=$((enabled_rule_count + 1))
+  done
+
+  if ((${#selected_rule_ids[@]} > 0)); then
+    for requested_rule_id in "${selected_rule_ids[@]}"; do
+      [[ -n "${available_rule_seen[$requested_rule_id]+set}" ]] \
+        || die "selected rule was not found: $requested_rule_id"
+      [[ "${available_rule_enabled[$requested_rule_id]}" = true ]] \
+        || die "selected rule is disabled: $requested_rule_id"
+    done
+    for requested_rule_id in "${!available_rule_seen[@]}"; do
+      if [[ "${available_rule_enabled[$requested_rule_id]}" = true &&
+        "${available_rule_required[$requested_rule_id]}" = true ]]; then
+        [[ -n "${selected_rule_seen[$requested_rule_id]+set}" ]] \
+          || die "enabled required rule was not selected: $requested_rule_id"
+      fi
+    done
+  else
+    ((enabled_rule_count > 0)) || die "no enabled review rules were selected"
+  fi
+
+  review_id="$(random_review_id)"
+  run_directory_path="${review_store_root}/${review_id}"
+  while ! mkdir -- "$run_directory_path" 2>/dev/null; do
+    review_id="$(random_review_id)"
+    run_directory_path="${review_store_root}/${review_id}"
+  done
+  active_start_directory="$run_directory_path"
+  trap cleanup_partial_start EXIT
+  mkdir -- "${run_directory_path}/rules" "${run_directory_path}/tasks"
+  : > "$(rules_file "$run_directory_path")"
+
+  for rule_file in "${rule_files[@]}"; do
+    file_rule_id="$(basename "$rule_file" .md)"
+    file_rule_name="${available_rule_name[$file_rule_id]}"
+    file_enabled="${available_rule_enabled[$file_rule_id]}"
+    file_required="${available_rule_required[$file_rule_id]}"
+
+    if ((${#selected_rule_ids[@]} > 0)); then
+      [[ -n "${selected_rule_seen[$file_rule_id]+set}" ]] || continue
+      selected_rule_found[$file_rule_id]=1
+    else
+      [[ "$file_enabled" = true ]] || continue
+    fi
+    selected_rule_found[$file_rule_id]=1
+
+    cp -- "$rule_file" "$(rule_snapshot "$run_directory_path" "$file_rule_id")"
+    printf '%s\t%s\t%s\n' "$file_rule_id" "$file_rule_name" "$file_required" >> "$(rules_file "$run_directory_path")"
+    selected_count=$((selected_count + 1))
+  done
+
+  if ((${#selected_rule_ids[@]} > 0)); then
+    for requested_rule_id in "${selected_rule_ids[@]}"; do
+      [[ -n "${selected_rule_found[$requested_rule_id]+set}" ]] \
+        || die "selected rule was not found: $requested_rule_id"
+    done
+  fi
+
+  ((selected_count > 0)) || die "no enabled review rules were selected"
+
+  local current_target
+  current_target="$(target_commit "$project_root")"
+  {
+    printf 'review_id=%s\n' "$review_id"
+    printf 'project_root=%s\n' "$project_root"
+    printf 'target=%s\n' "$current_target"
+    printf 'state=running\n'
+  } > "$(run_property_file "$run_directory_path")"
+
+  local rule_json
+  rule_json="$({
+    while IFS=$'\t' read -r file_rule_id file_rule_name file_required; do
+      [[ -n "$file_rule_id" ]] || continue
+      jq -n --arg id "$file_rule_id" --arg name "$file_rule_name" --argjson required "$file_required" \
+        '{rule_id: $id, name: $name, required: $required, state: "pending"}'
+    done < "$(rules_file "$run_directory_path")"
+  } | jq -s '.')"
+
+  jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+    --arg project_root "$project_root" --arg target "$current_target" --argjson rules "$rule_json" \
+    '{review_id: $review_id, artifact_dir: $artifact_dir, project_root: $project_root, target: $target, rules: $rules}'
+  active_start_directory=''
+  trap - EXIT
+}
+
+get_task() {
+  require_jq
+  require_flock
+  ensure_store_root
+
+  local review_id=''
+  local requested_rule_id=''
+  while (($# > 0)); do
+    case "$1" in
+      --review-id)
+        (($# >= 2)) || die "--review-id needs a value"
+        review_id="$2"
+        shift 2
+        ;;
+      --rule-id)
+        (($# >= 2)) || die "--rule-id needs a value"
+        requested_rule_id="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown get-task argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$review_id" && -n "$requested_rule_id" ]] || die "get-task requires --review-id and --rule-id"
+  validate_review_id "$review_id"
+  validate_rule_id "$requested_rule_id"
+
+  local run_directory_path
+  run_directory_path="$(run_directory "$review_id")"
+  local selected_row
+  selected_row="$(rule_row "$run_directory_path" "$requested_rule_id")"
+  [[ -n "$selected_row" ]] || die "rule is not selected for this review: $requested_rule_id"
+
+  local lock_file="${run_directory_path}/run.lock"
+  local lock_fd
+  exec {lock_fd}>"$lock_file"
+  flock "$lock_fd"
+
+  local run_state
+  run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
+  [[ "$run_state" = running ]] || die "review run is not accepting new tasks: $review_id ($run_state)"
+
+  local existing_task_file
+  existing_task_file="$(task_file_for_rule "$run_directory_path" "$requested_rule_id")"
+  if [[ -n "$existing_task_file" ]]; then
+    local existing_task_id
+    existing_task_id="$(read_value task_id "$existing_task_file")"
+    flock -u "$lock_fd"
+    exec {lock_fd}>&-
+    die "rule already has a claimed task: $requested_rule_id (task id: $existing_task_id)"
+  fi
+
+  local task_id
+  local task_directory
+  task_id="$(random_task_id)"
+  task_directory="${run_directory_path}/tasks/${task_id}"
+  while ! mkdir -- "$task_directory" 2>/dev/null; do
+    task_id="$(random_task_id)"
+    task_directory="${run_directory_path}/tasks/${task_id}"
+  done
+  {
+    printf 'task_id=%s\n' "$task_id"
+    printf 'review_id=%s\n' "$review_id"
+    printf 'rule_id=%s\n' "$requested_rule_id"
+    printf 'state=running\n'
+    printf 'task_dir=%s\n' "$task_directory"
+    printf 'report_path=%s/report.md\n' "$task_directory"
+  } > "${task_directory}/task.env"
+
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+  emit_task "$run_directory_path" "${task_directory}/task.env" "$requested_rule_id"
+}
+
+emit_task() {
+  local run_directory_path="$1"
+  local task_properties_file="$2"
+  local requested_rule_id="$3"
+  local project_root
+  local target
+  local task_id
+  local task_directory
+  local report_path
+  local rule_content
+
+  project_root="$(read_value project_root "$(run_property_file "$run_directory_path")")"
+  target="$(read_value target "$(run_property_file "$run_directory_path")")"
+  task_id="$(read_value task_id "$task_properties_file")"
+  task_directory="$(read_value task_dir "$task_properties_file")"
+  report_path="$(read_value report_path "$task_properties_file")"
+  rule_content="$(jq -Rs . < "$(rule_snapshot "$run_directory_path" "$requested_rule_id")")"
+
+  jq -n --arg review_id "$(basename "$run_directory_path")" --arg task_id "$task_id" \
+    --arg rule_id "$requested_rule_id" --arg project_root "$project_root" --arg target "$target" \
+    --arg artifact_dir "$task_directory" --arg report_path "$report_path" --argjson rule "$rule_content" \
+    '{review_id: $review_id, task_id: $task_id, rule_id: $rule_id, project_root: $project_root, target: $target, artifact_dir: $artifact_dir, report_path: $report_path, rule: $rule}'
+}
+
+submit_task() {
+  require_jq
+  require_flock
+  ensure_store_root
+
+  local task_id=''
+  local requested_status='completed'
+  while (($# > 0)); do
+    case "$1" in
+      --task-id)
+        (($# >= 2)) || die "--task-id needs a value"
+        task_id="$2"
+        shift 2
+        ;;
+      --status)
+        (($# >= 2)) || die "--status needs a value"
+        requested_status="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown submit argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$task_id" ]] || die "submit requires --task-id"
+  validate_task_id "$task_id"
+  [[ "$requested_status" = completed || "$requested_status" = failed || "$requested_status" = blocked ]] \
+    || die "status must be completed, failed, or blocked"
+
+  local review_directory_path
+  local task_properties_file
+  local task_directory
+  local report_path
+  local matching_run_count=0
+  review_directory_path=''
+  task_properties_file=''
+  for review_directory_path in "$review_store_root"/review-*; do
+    [[ -d "$review_directory_path" && ! -L "$review_directory_path" ]] || continue
+    local candidate_task_file
+    candidate_task_file="$(task_file_for_id "$review_directory_path" "$task_id")"
+    if [[ -n "$candidate_task_file" ]]; then
+      matching_run_count=$((matching_run_count + 1))
+      if ((matching_run_count > 1)); then
+        die "task id is not unique: $task_id"
+      fi
+      task_properties_file="$candidate_task_file"
+    fi
+  done
+  [[ -n "$task_properties_file" ]] || die "task not found: $task_id"
+
+  review_directory_path="$(dirname "$(dirname "$(dirname "$task_properties_file")")")"
+  local lock_file="${review_directory_path}/run.lock"
+  local lock_fd
+  exec {lock_fd}>"$lock_file"
+  flock "$lock_fd"
+
+  local run_state
+  run_state="$(read_value state "$(run_property_file "$review_directory_path")")"
+  [[ "$run_state" = running ]] || die "review run is not accepting submissions: $run_state"
+  local current_task_state
+  current_task_state="$(read_value state "$task_properties_file")"
+  [[ "$current_task_state" = running ]] || die "task is already terminal: $task_id ($current_task_state)"
+
+  task_directory="$(read_value task_dir "$task_properties_file")"
+  report_path="$(read_value report_path "$task_properties_file")"
+  if [[ "$requested_status" = completed ]]; then
+    [[ -s "$report_path" ]] || die "completed task must contain a non-empty report: $report_path"
+  fi
+
+  write_value state "$requested_status" "$task_properties_file"
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+
+  jq -n --arg review_id "$(basename "$review_directory_path")" --arg task_id "$task_id" \
+    --arg state "$requested_status" --arg artifact_dir "$task_directory" --arg report_path "$report_path" \
+    '{review_id: $review_id, task_id: $task_id, state: $state, artifact_dir: $artifact_dir, report_path: $report_path}'
+}
+
+status_json() {
+  local run_directory_path="$1"
+  local rule_id="$2"
+  local rule_name="$3"
+  local required="$4"
+  local task_properties_file
+  local task_id=''
+  local state='pending'
+  local report_path=''
+
+  task_properties_file="$(task_file_for_rule "$run_directory_path" "$rule_id")"
+  if [[ -n "$task_properties_file" ]]; then
+    task_id="$(read_value task_id "$task_properties_file")"
+    state="$(read_value state "$task_properties_file")"
+    report_path="$(read_value report_path "$task_properties_file")"
+  fi
+
+  jq -n --arg id "$rule_id" --arg name "$rule_name" --argjson required "$required" \
+    --arg state "$state" --arg task_id "$task_id" --arg report_path "$report_path" \
+    '{rule_id: $id, name: $name, required: $required, state: $state, task_id: (if $task_id == "" then null else $task_id end), report_path: (if $report_path == "" then null else $report_path end)}'
+}
+
+wait_for_run() {
+  require_jq
+  require_hash_tool
+  ensure_store_root
+
+  local review_id=''
+  local timeout_seconds=300
+  while (($# > 0)); do
+    case "$1" in
+      --review-id)
+        (($# >= 2)) || die "--review-id needs a value"
+        review_id="$2"
+        shift 2
+        ;;
+      --timeout-seconds)
+        (($# >= 2)) || die "--timeout-seconds needs a value"
+        timeout_seconds="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown wait argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$review_id" ]] || die "wait requires --review-id"
+  validate_review_id "$review_id"
+  [[ "$timeout_seconds" =~ ^[0-9]+$ ]] || die "timeout must be a non-negative integer"
+
+  local run_directory_path
+  run_directory_path="$(run_directory "$review_id")"
+  local started_at
+  started_at="$(date +%s)"
+  local rules_json
+  local all_terminal
+  local current_time
+  local status_lines
+  local status_line
+  local rule_id
+  local rule_name
+  local rule_required
+  local rule_state
+  local project_root
+  local expected_target
+  local observed_target
+  local run_state
+  local required_tasks_complete
+  local task_result
+  local review_gate_value
+
+  while :; do
+    all_terminal=true
+    required_tasks_complete=true
+    status_lines="$(mktemp "${run_directory_path}/status.XXXXXX")"
+    : > "$status_lines"
+    while IFS=$'\t' read -r rule_id rule_name rule_required; do
+      [[ -n "$rule_id" ]] || continue
+      status_line="$(status_json "$run_directory_path" "$rule_id" "$rule_name" "$rule_required")"
+      printf '%s\n' "$status_line" >> "$status_lines"
+      rule_state="$(jq -r '.state' <<< "$status_line")"
+      case "$rule_state" in
+        completed|failed|blocked) ;;
+        *) all_terminal=false ;;
+      esac
+      if [[ "$rule_required" = true && "$rule_state" != completed ]]; then
+        required_tasks_complete=false
+      fi
+    done < "$(rules_file "$run_directory_path")"
+    rules_json="$(jq -s '.' "$status_lines")"
+    rm -f -- "$status_lines"
+
+    run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
+    if [[ "$run_state" = timed_out ]]; then
+      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out true \
+        --arg task_result timed-out --arg review_gate blocked --argjson rules "$rules_json" \
+        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      return 2
+    fi
+    if [[ "$run_state" = invalidated ]]; then
+      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out false \
+        --arg task_result source-changed --arg review_gate blocked --argjson rules "$rules_json" \
+        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      return 3
+    fi
+
+    project_root="$(read_value project_root "$(run_property_file "$run_directory_path")")"
+    expected_target="$(read_value target "$(run_property_file "$run_directory_path")")"
+    observed_target="$(target_commit "$project_root")"
+    if [[ "$expected_target" != "$observed_target" ]]; then
+      write_value state invalidated "$(run_property_file "$run_directory_path")"
+      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out false \
+        --arg task_result source-changed --arg review_gate blocked --argjson rules "$rules_json" \
+        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      return 3
+    fi
+
+    if [[ "$all_terminal" = true ]]; then
+      write_value state complete "$(run_property_file "$run_directory_path")"
+      if [[ "$required_tasks_complete" = true ]]; then
+        task_result=ready-for-aggregation
+        review_gate_value=requires-report-aggregation
+      else
+        task_result=required-task-failed
+        review_gate_value=blocked
+      fi
+      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+        --argjson complete true --argjson all_tasks_terminal true --argjson timed_out false \
+        --arg task_result "$task_result" --arg review_gate "$review_gate_value" \
+        --argjson rules "$rules_json" \
+        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      return 0
+    fi
+
+    current_time="$(date +%s)"
+    if ((current_time - started_at >= timeout_seconds)); then
+      write_value state timed_out "$(run_property_file "$run_directory_path")"
+      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out true \
+        --arg task_result timed-out --arg review_gate blocked --argjson rules "$rules_json" \
+        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      return 2
+    fi
+    sleep 1
+  done
+}
+
+cleanup_run() {
+  require_jq
+  ensure_store_root
+
+  local review_id=''
+  while (($# > 0)); do
+    case "$1" in
+      --review-id)
+        (($# >= 2)) || die "--review-id needs a value"
+        review_id="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown cleanup argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$review_id" ]] || die "cleanup requires --review-id"
+  validate_review_id "$review_id"
+
+  local run_directory_path
+  run_directory_path="$(run_directory "$review_id")"
+  local run_state
+  run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
+  [[ "$run_state" != running ]] || die "cannot clean up an active review run: $review_id"
+  run_directory_path="$(run_directory "$review_id")"
+  rm -rf -- "$run_directory_path"
+  jq -n --arg review_id "$review_id" --arg state "$run_state" \
+    '{review_id: $review_id, cleaned: true, previous_state: $state}'
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  workflow-review start --project-root <path> [--rule-id <id>]...
+  workflow-review get-task --review-id <review-id> --rule-id <id>
+  workflow-review submit --task-id <task-id> [--status completed|failed|blocked]
+  workflow-review wait --review-id <review-id> [--timeout-seconds <seconds>]
+  workflow-review cleanup --review-id <review-id>
+EOF
+}
+
+main() {
+  (($# > 0)) || { usage; exit 2; }
+  local subcommand="$1"
+  shift
+  case "$subcommand" in
+    start) start_run "$@" ;;
+    get-task) get_task "$@" ;;
+    submit) submit_task "$@" ;;
+    wait) wait_for_run "$@" ;;
+    cleanup) cleanup_run "$@" ;;
+    help|--help|-h) usage ;;
+    *) die "unknown command: $subcommand" ;;
+  esac
+}
+
+main "$@"

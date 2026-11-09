@@ -49,6 +49,9 @@ task.
   multiple PRs without creating multiple Issues.
 - **Mechanical integration adjustment** changes commit/branch mechanics or resolves a conflict
   without changing approved behavior. If behavior changes, it is implementation work.
+- **Internal review run** is the current, project-specific `workflow:review` check performed before
+  an implementation becomes ready for human review. Its artifacts are ephemeral and it is not a
+  GitHub approval, a persisted audit record, or a substitute for the selected Review Mode.
 
 ## Review modes
 
@@ -78,7 +81,7 @@ reason, exit criteria, and entry criteria in the row are all satisfied.
 | `Specifying` | `Ready` | Human action required | Required specification fields are current, scope and acceptance criteria are clear, no blocking open question remains, and a specification-type Issue has its actual contract and representative semantic-variant examples in the Issue or a directly linked versioned specification artifact, not only a decision record. A human directly changes Project Status to `Ready`; the agent only verifies this evidence. |
 | `Ready` | `In Progress` | Agent | The approved specification is frozen, the approved work has actually started, and the Design System gate check passes. For `Design System Scope: None`, ordinary lifecycle criteria are sufficient. For any non-`None` scope, `Implementation Gate: Open` is required; for `Build` or `Design+Build`, `Design System Phase: Contract Approved`, `Design System Approval: Approved`, the implementation plan, and validation targets are also required. A `Design` scope may use `In Progress` only for approved design artifacts and never as permission to run `build`. If the gate is `Blocked`, the agent MUST NOT enter `In Progress`, create an implementation branch, modify runtime code, or create an implementation PR. A `Discussion` Requirement MUST change to another Work Mode before this transition. |
 | `Ready` | `Specifying` | Agent after an identified material requirement change | Update the Issue body and invalidate the prior specification approval. |
-| `In Progress` | `In Review` | Agent | For `Delivery`, all required implementation is complete, required checks pass, all required PRs exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. During reconciliation, persisted review history for an already processed PR MAY satisfy the reviewable condition. |
+| `In Progress` | `In Review` | Agent | For `Delivery`, all required implementation is complete, required checks pass, all required PRs exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. For any repository-artifact result, the current project-specific `workflow:review` run must have completed with no unresolved blocking finding. An ephemeral internal review run is valid only for this transition in the current session; if its artifacts are gone or the implementation changes, run it again. During reconciliation, persisted human/PR review history for an already processed PR MAY satisfy the GitHub reviewable condition, but it does not recreate a missing internal review run for a new transition. |
 | `In Progress` | `Specifying` | Agent after an identified material requirement change | Update the Issue body before further implementation; do not preserve an obsolete approval. |
 | `In Review` | `In Progress` | Agent | Human or CI feedback requires implementation work, or current approval/readiness is invalidated. Record feedback and the next verification. |
 | `In Review` | `Specifying` | Agent after an identified material requirement change | The feedback changes behavior, acceptance criteria, scope, or an important constraint. Update the Issue body. |
@@ -150,6 +153,13 @@ unless the repository does not support Draft PRs or a human explicitly requests 
 A failed check is a signal, not a new lifecycle status.
 
 Move to `In Review` only when the whole Issue—not merely one PR—is reviewable.
+For repository-artifact work, this also requires a completed current `workflow:review` run using the
+project's enabled rules. All selected required rules must be terminal `completed`, their reports
+must exist in the external run directory, and no unresolved `Blocking` finding may remain. The run
+directory is not a durable source of truth; if it is unavailable before this transition, rerun the
+review. Passing the internal gate does not supply the human approval required for `In Review` →
+`Ready to Merge`. A `Research`/`Prototype` item with no repository artifact does not require this
+internal review gate; its bounded result still requires the applicable human discovery acceptance.
 
 ### In Review
 
@@ -160,8 +170,9 @@ feedback returns to `In Progress`; a material requirement change returns to `Spe
 `Collaborative` mode, human approval means a current native `APPROVED` review on every required PR.
 In `Solo Maintainer` mode, human acceptance means that every required PR records the current head
 that was reviewed and a human directly changes Project Status to `Ready to Merge` after reviewing
-the implementation. Human approval or acceptance of the current implementation or discovery result
-permits `Ready to Merge`.
+the implementation. The internal project-specific review is a prerequisite for entering this
+status, but it is not human approval. Human approval or acceptance of the current implementation or
+discovery result permits `Ready to Merge`.
 
 ### Ready to Merge
 
@@ -238,12 +249,15 @@ Before every lifecycle status change, the agent MUST:
 7. For `Ready` → `In Progress`, run the Design System gate check in
    [design-system-handoff.md](design-system-handoff.md). `Scope: None` follows the ordinary
    path; a Design System scope with `Implementation Gate: Blocked` stops the transition.
-8. Verify the target status entry criteria and human gate, if any.
-9. Execute the transition.
-10. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
-11. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
-12. Record any missing condition instead of transitioning; emit a checkpoint before returning
-    control to Human.
+8. For `In Progress` → `In Review` repository-artifact work, run `workflow:review` and verify the
+   current run's required tasks, reports, and blocking-finding result. Do not reuse a missing or
+   stale ephemeral run.
+9. Verify the target status entry criteria and human gate, if any.
+10. Execute the transition.
+11. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
+12. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
+13. Record any missing condition instead of transitioning; emit a checkpoint before returning
+   control to Human.
 
 Reading only a PR or only a Project card is insufficient evidence for a lifecycle transition. An
 Issue body or decision record is also insufficient evidence of current implementation behavior.

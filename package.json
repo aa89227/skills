@@ -3,6 +3,9 @@
   "private": true,
   "description": "Reusable agent skills for Claude Code, Codex, and the pi coding agent.",
   "keywords": ["pi-package"],
+  "bin": {
+    "workflow-review": "./workflow/skills/review/scripts/workflow-review"
+  },
   "pi": {
     "skills": [
       "./csharp-best-practices/skills",
