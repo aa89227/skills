@@ -8,7 +8,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.0"
+  version: "1.1"
   tags: ["workflow", "review", "reviewer", "subagent", "herdr"]
 ---
 
@@ -69,6 +69,11 @@ It must state its scope, evidence to inspect, and what makes a finding blocking.
 specific parser class, package name, test framework, or preferred helper method in a rule unless
 that detail is itself an externally maintained project constraint.
 
+Each rule must also define an ordered review procedure. Keep the top-level steps meaningful and
+review-oriented rather than listing every command. Declare which top-level steps may receive
+one-level dynamic investigation children; the reviewer chooses whether to add those children from
+evidence discovered during the run.
+
 If setup discovers a new architecture, product, security, or compatibility decision that is not
 already evidenced by the current source or project documentation, pause and ask whether the user
 wants to discuss that decision. Do not turn an agent preference into a required rule merely because
@@ -83,7 +88,14 @@ id: architecture-boundary
 name: Architecture Boundary
 enabled: true
 required: true
+steps: identify-change-surface,check-boundary,write-report
+dynamic_parents: check-boundary
 ```
+
+`steps` is an ordered, comma-separated list of top-level review steps. `dynamic_parents` is an
+optional comma-separated list of top-level step IDs under which the reviewer may add investigation
+steps at runtime. Dynamic steps are limited to one child level; they cannot create further child
+steps. A parent step cannot complete until all of its dynamic children complete successfully.
 
 Optional metadata may describe paths or applicability, but the primary agent must select the rules
 that apply to the current change. A disabled rule is not part of the normal gate. Keep one reviewer
@@ -135,6 +147,20 @@ workflow-review get-task \
   --review-id "$REVIEW_ID" \
   --rule-id architecture-boundary
 
+workflow-review start-step --task-id "$TASK_ID" --step-id identify-change-surface
+workflow-review complete-step --task-id "$TASK_ID" --step-id identify-change-surface
+
+workflow-review start-step --task-id "$TASK_ID" --step-id check-boundary
+workflow-review add-step \
+  --task-id "$TASK_ID" \
+  --parent-step-id check-boundary \
+  --step-id inspect-dependent-boundary \
+  --reason "A new dependency crosses the reviewed boundary."
+workflow-review start-step --task-id "$TASK_ID" --step-id inspect-dependent-boundary
+workflow-review complete-step --task-id "$TASK_ID" --step-id inspect-dependent-boundary
+workflow-review complete-step --task-id "$TASK_ID" --step-id check-boundary
+
+workflow-review status --review-id "$REVIEW_ID"
 workflow-review submit --task-id "$TASK_ID" --status completed
 workflow-review wait --review-id "$REVIEW_ID"
 workflow-review cleanup --review-id "$REVIEW_ID"
@@ -156,22 +182,34 @@ the project. The reviewer:
 
 1. receives only the review ID and its assigned stable rule ID in the initial dispatch prompt;
 2. calls `workflow-review get-task --review-id <id> --rule-id <rule-id>`;
-3. reads the current project state and the returned rule content;
-4. writes its report directly to the returned `report_path` inside the returned external task
-   directory; it may add supporting files in that directory;
-5. does not modify project source, tests, configuration, Issues, PRs, branches, commits, or
+3. calls `start-step` and `complete-step` for every configured top-level step in order;
+4. adds dynamic child steps only under an active parent listed by `dynamic_parents`, then runs and
+   completes each child before completing its parent;
+5. reads the current project state and the returned rule content;
+6. writes step artifacts directly inside the returned external task directory and writes its report
+   directly to the returned `report_path` inside the returned external task directory; it may add
+   supporting files in that directory;
+7. does not modify project source, tests, configuration, Issues, PRs, branches, commits, or
    worktrees;
-6. calls `workflow-review submit --task-id <task-id> --status completed` after writing the report,
+8. calls `workflow-review submit --task-id <task-id> --status completed` after all steps and the
+   report are complete,
    or `--status failed` / `--status blocked` when it cannot complete the assignment.
 
 `get-task` is a one-time claim for a rule in a review run. Dispatch exactly one reviewer for each
 task. A repeated claim is an orchestration error; use the already returned task ID for a retry by
 the same reviewer rather than starting another reviewer for that rule.
 
-`submit` records task state only. It must never receive report text and must never be used as a file
-writer. Use [references/review-report-template.md](references/review-report-template.md) for the
-report shape. Every finding is classified as `Blocking`, `Non-blocking`, or `Informational`; a
-reviewer's preference is not automatically a blocking finding.
+`start-step`, `add-step`, `complete-step`, and `submit` record state only. They must never receive
+report text and must never be used as file writers. Use
+[references/review-rule-template.md](references/review-rule-template.md) for the step metadata and
+[references/review-report-template.md](references/review-report-template.md) for the report shape.
+Every finding is classified as `Blocking`, `Non-blocking`, or `Informational`; a reviewer's
+preference is not automatically a blocking finding.
+
+The primary agent may call `workflow-review status --review-id <id>` while tasks are running. The
+status output exposes step state and dynamic-step relationships, but the primary agent must not read
+or edit a reviewer's in-progress report or step artifacts. The reviewer does not need approval for a
+dynamic child step; the rule's declared `dynamic_parents` and the one-level limit are the boundary.
 
 The primary agent must not read another reviewer's task directory while that reviewer is working,
 must not edit a reviewer's report to change its conclusion, and must not silently fix code during
@@ -199,8 +237,9 @@ invalidates a run when it detects a target change while waiting.
 ## Completion gate
 
 The review passes only when all selected required rules have terminal `completed` tasks, every
-required report is present, and no report contains an unresolved `Blocking` finding. Optional-rule
-failures and non-blocking findings must be reported, but do not silently disappear.
+required task has completed all configured and dynamic steps, every required report is present, and
+no report contains an unresolved `Blocking` finding. Optional-rule failures and non-blocking
+findings must be reported, but do not silently disappear.
 
 `workflow-review wait` means only that task states are terminal; it is not itself a passing review.
 The primary agent must read the reports, classify findings, and apply the gate above before

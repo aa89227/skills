@@ -59,6 +59,11 @@ validate_rule_id() {
   [[ "$rule_id" =~ ^[a-z][a-z0-9-]*$ ]] || die "invalid rule id: $rule_id"
 }
 
+validate_step_id() {
+  local step_id="$1"
+  [[ "$step_id" =~ ^[a-z][a-z0-9-]*$ ]] || die "invalid step id: $step_id"
+}
+
 validate_task_id() {
   local task_id="$1"
   [[ "$task_id" =~ ^task-[a-f0-9]{16,64}$ ]] || die "invalid task id: $task_id"
@@ -124,6 +129,53 @@ frontmatter_value() {
   ' "$metadata_file"
 }
 
+trim_space() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s\n' "$value"
+}
+
+validate_step_list() {
+  local value="$1"
+  local field_name="$2"
+  local allow_empty="${3:-false}"
+  local raw_step_id
+  local step_id
+  local -a step_ids=()
+  local -A seen_step_ids=()
+
+  if [[ -z "$value" ]]; then
+    [[ "$allow_empty" = true ]] || die "$field_name is missing"
+    return 0
+  fi
+
+  IFS=',' read -r -a step_ids <<< "$value"
+  for raw_step_id in "${step_ids[@]}"; do
+    step_id="$(trim_space "$raw_step_id")"
+    [[ -n "$step_id" ]] || die "$field_name contains an empty step id"
+    validate_step_id "$step_id"
+    [[ -z "${seen_step_ids[$step_id]+set}" ]] || die "$field_name contains a duplicate step id: $step_id"
+    seen_step_ids[$step_id]=1
+  done
+}
+
+csv_contains() {
+  local value="$1"
+  local requested_id="$2"
+  local raw_id
+  local id
+  local -a ids=()
+
+  [[ -n "$value" ]] || return 1
+  IFS=',' read -r -a ids <<< "$value"
+  for raw_id in "${ids[@]}"; do
+    id="$(trim_space "$raw_id")"
+    [[ "$id" = "$requested_id" ]] && return 0
+  done
+  return 1
+}
+
 validate_rule_file() {
   local rule_file="$1"
   local expected_rule_id="$2"
@@ -132,6 +184,8 @@ validate_rule_file() {
   local rule_type
   local enabled
   local required
+  local steps
+  local dynamic_parents
 
   [[ "$(sed -n '1p' "$rule_file")" = "---" ]] || die "rule is missing frontmatter: $rule_file"
 
@@ -140,6 +194,8 @@ validate_rule_file() {
   rule_name="$(frontmatter_value "$rule_file" name)"
   enabled="$(frontmatter_value "$rule_file" enabled)"
   required="$(frontmatter_value "$rule_file" required)"
+  steps="$(frontmatter_value "$rule_file" steps)"
+  dynamic_parents="$(frontmatter_value "$rule_file" dynamic_parents)"
 
   [[ "$rule_type" = "review-rule" ]] || die "rule type must be review-rule: $rule_file"
   [[ "$rule_id" = "$expected_rule_id" ]] || die "rule id does not match file name: $rule_file"
@@ -148,6 +204,18 @@ validate_rule_file() {
   [[ "$required" = true || "$required" = false ]] || die "required must be true or false: $rule_file"
   validate_rule_id "$rule_id"
   [[ "$rule_name" != *$'\t'* ]] || die "rule name may not contain tabs: $rule_file"
+  validate_step_list "$steps" "steps"
+  validate_step_list "$dynamic_parents" "dynamic_parents" true
+  local raw_parent_id
+  local parent_id
+  local -a parent_ids=()
+  IFS=',' read -r -a parent_ids <<< "$dynamic_parents"
+  for raw_parent_id in "${parent_ids[@]}"; do
+    [[ -n "$raw_parent_id" ]] || continue
+    parent_id="$(trim_space "$raw_parent_id")"
+    csv_contains "$steps" "$parent_id" \
+      || die "dynamic_parents contains a step that is not in steps: $parent_id"
+  done
 }
 
 ensure_store_root() {
@@ -284,6 +352,152 @@ task_file_for_id() {
       return 0
     fi
   done
+}
+
+task_steps_manifest() {
+  local task_properties_file="$1"
+  local task_directory
+  task_directory="$(read_value task_dir "$task_properties_file")"
+  printf '%s/steps.tsv\n' "$task_directory"
+}
+
+task_steps_directory() {
+  local task_properties_file="$1"
+  local task_directory
+  task_directory="$(read_value task_dir "$task_properties_file")"
+  printf '%s/steps\n' "$task_directory"
+}
+
+task_step_file() {
+  local task_properties_file="$1"
+  local requested_step_id="$2"
+  validate_step_id "$requested_step_id"
+  local task_steps_directory_path
+  task_steps_directory_path="$(task_steps_directory "$task_properties_file")"
+  local step_file="${task_steps_directory_path}/${requested_step_id}/step.env"
+  [[ -f "$step_file" ]] || return 0
+  printf '%s\n' "$step_file"
+}
+
+task_step_row() {
+  local task_properties_file="$1"
+  local requested_step_id="$2"
+  awk -F '\t' -v id="$requested_step_id" '$1 == id { print; exit }' \
+    "$(task_steps_manifest "$task_properties_file")"
+}
+
+step_is_successful() {
+  local step_state="$1"
+  [[ "$step_state" = completed ]]
+}
+
+step_json() {
+  local step_properties_file="$1"
+  local task_properties_file="$2"
+  local step_id
+  local parent_step_id
+  local kind
+  local state
+  local order
+  local reason
+  local artifact_path
+
+  step_id="$(read_value step_id "$step_properties_file")"
+  parent_step_id="$(read_value parent_step_id "$step_properties_file")"
+  kind="$(read_value kind "$step_properties_file")"
+  state="$(read_value state "$step_properties_file")"
+  order="$(read_value order "$step_properties_file")"
+  reason="$(read_value reason "$step_properties_file")"
+  artifact_path="$(read_value artifact_path "$step_properties_file")"
+
+  jq -n --arg step_id "$step_id" --arg parent_step_id "$parent_step_id" \
+    --arg kind "$kind" --arg state "$state" --arg order "$order" \
+    --arg reason "$reason" --arg artifact_path "$artifact_path" \
+    '{step_id: $step_id, parent_step_id: (if $parent_step_id == "" then null else $parent_step_id end), kind: $kind, state: $state, order: ($order | tonumber), reason: (if $reason == "" then null else $reason end), artifact_path: $artifact_path}'
+}
+
+task_steps_json() {
+  local task_properties_file="$1"
+  local step_file
+  local steps_json='[]'
+  local step_json_value
+
+  while IFS=$'\t' read -r step_id parent_step_id kind order; do
+    [[ -n "$step_id" ]] || continue
+    step_file="$(task_step_file "$task_properties_file" "$step_id")"
+    [[ -n "$step_file" ]] || die "step state file is missing: $step_id"
+    step_json_value="$(step_json "$step_file" "$task_properties_file")"
+    steps_json="$(jq -c --argjson step "$step_json_value" '. + [$step]' <<< "$steps_json")"
+  done < "$(task_steps_manifest "$task_properties_file")"
+  printf '%s\n' "$steps_json"
+}
+
+find_task_file() {
+  local requested_task_id="$1"
+  local review_directory_path
+  local candidate_task_file
+  local matching_run_count=0
+  local matching_task_file=''
+
+  validate_task_id "$requested_task_id"
+  for review_directory_path in "$review_store_root"/review-*; do
+    [[ -d "$review_directory_path" && ! -L "$review_directory_path" ]] || continue
+    candidate_task_file="$(task_file_for_id "$review_directory_path" "$requested_task_id")"
+    if [[ -n "$candidate_task_file" ]]; then
+      matching_run_count=$((matching_run_count + 1))
+      ((matching_run_count <= 1)) || die "task id is not unique: $requested_task_id"
+      matching_task_file="$candidate_task_file"
+    fi
+  done
+  [[ -n "$matching_task_file" ]] || die "task not found: $requested_task_id"
+  printf '%s\n' "$matching_task_file"
+}
+
+initialize_task_steps() {
+  local task_properties_file="$1"
+  local rule_file="$2"
+  local steps_value
+  local dynamic_parents
+  local raw_step_id
+  local step_id
+  local -a step_ids=()
+  local step_order=0
+  local task_directory
+  local task_steps_directory_path
+  local step_directory_path
+  local step_file
+  local artifact_path
+
+  steps_value="$(frontmatter_value "$rule_file" steps)"
+  dynamic_parents="$(frontmatter_value "$rule_file" dynamic_parents)"
+  validate_step_list "$steps_value" "steps"
+  validate_step_list "$dynamic_parents" "dynamic_parents" true
+
+  task_directory="$(read_value task_dir "$task_properties_file")"
+  task_steps_directory_path="$(task_steps_directory "$task_properties_file")"
+  mkdir -- "$task_steps_directory_path"
+  : > "$(task_steps_manifest "$task_properties_file")"
+
+  IFS=',' read -r -a step_ids <<< "$steps_value"
+  for raw_step_id in "${step_ids[@]}"; do
+    step_id="$(trim_space "$raw_step_id")"
+    step_order=$((step_order + 1))
+    step_directory_path="${task_steps_directory_path}/${step_id}"
+    step_file="${step_directory_path}/step.env"
+    artifact_path="${step_directory_path}/step.md"
+    mkdir -- "$step_directory_path"
+    {
+      printf 'step_id=%s\n' "$step_id"
+      printf 'parent_step_id=\n'
+      printf 'kind=required\n'
+      printf 'state=pending\n'
+      printf 'order=%s\n' "$step_order"
+      printf 'reason=\n'
+      printf 'artifact_path=%s\n' "$artifact_path"
+    } > "$step_file"
+    printf '%s\t\trequired\t%s\n' "$step_id" "$step_order" >> "$(task_steps_manifest "$task_properties_file")"
+  done
+  write_value dynamic_parents "$dynamic_parents" "$task_properties_file"
 }
 
 target_commit() {
@@ -552,9 +766,11 @@ get_task() {
     printf 'review_id=%s\n' "$review_id"
     printf 'rule_id=%s\n' "$requested_rule_id"
     printf 'state=running\n'
+    printf 'active_step=\n'
     printf 'task_dir=%s\n' "$task_directory"
     printf 'report_path=%s/report.md\n' "$task_directory"
   } > "${task_directory}/task.env"
+  initialize_task_steps "${task_directory}/task.env" "$(rule_snapshot "$run_directory_path" "$requested_rule_id")"
 
   flock -u "$lock_fd"
   exec {lock_fd}>&-
@@ -571,6 +787,7 @@ emit_task() {
   local task_directory
   local report_path
   local rule_content
+  local steps_json
 
   project_root="$(read_value project_root "$(run_property_file "$run_directory_path")")"
   target="$(read_value target "$(run_property_file "$run_directory_path")")"
@@ -578,11 +795,353 @@ emit_task() {
   task_directory="$(read_value task_dir "$task_properties_file")"
   report_path="$(read_value report_path "$task_properties_file")"
   rule_content="$(jq -Rs . < "$(rule_snapshot "$run_directory_path" "$requested_rule_id")")"
+  steps_json="$(task_steps_json "$task_properties_file")"
 
   jq -n --arg review_id "$(basename "$run_directory_path")" --arg task_id "$task_id" \
     --arg rule_id "$requested_rule_id" --arg project_root "$project_root" --arg target "$target" \
     --arg artifact_dir "$task_directory" --arg report_path "$report_path" --argjson rule "$rule_content" \
-    '{review_id: $review_id, task_id: $task_id, rule_id: $rule_id, project_root: $project_root, target: $target, artifact_dir: $artifact_dir, report_path: $report_path, rule: $rule}'
+    --argjson steps "$steps_json" --arg current_step "$(read_value active_step "$task_properties_file")" \
+    '{review_id: $review_id, task_id: $task_id, rule_id: $rule_id, project_root: $project_root, target: $target, artifact_dir: $artifact_dir, report_path: $report_path, current_step: (if $current_step == "" then null else $current_step end), steps: $steps, rule: $rule}'
+}
+
+ensure_step_can_start() {
+  local task_properties_file="$1"
+  local step_properties_file="$2"
+  local requested_step_id
+  local parent_step_id
+  local step_state
+  local active_step
+  local row_step_id
+  local row_parent_step_id
+  local row_kind
+  local row_order
+  local prior_step_file
+
+  requested_step_id="$(read_value step_id "$step_properties_file")"
+  parent_step_id="$(read_value parent_step_id "$step_properties_file")"
+  step_state="$(read_value state "$step_properties_file")"
+  active_step="$(read_value active_step "$task_properties_file")"
+  [[ "$step_state" = pending ]] || die "step is not pending: $requested_step_id ($step_state)"
+
+  if [[ -z "$parent_step_id" ]]; then
+    [[ -z "$active_step" ]] || die "another step is already active: $active_step"
+    while IFS=$'\t' read -r row_step_id row_parent_step_id row_kind row_order; do
+      [[ -n "$row_step_id" ]] || continue
+      [[ -n "$row_parent_step_id" ]] && continue
+      [[ "$row_step_id" = "$requested_step_id" ]] && break
+      prior_step_file="$(task_step_file "$task_properties_file" "$row_step_id")"
+      step_is_successful "$(read_value state "$prior_step_file")" \
+        || die "previous top-level step is not complete: $row_step_id"
+    done < "$(task_steps_manifest "$task_properties_file")"
+  else
+    [[ "$active_step" = "$parent_step_id" ]] || die "parent step is not the active step: $parent_step_id"
+    local parent_step_file
+    local parent_state
+    parent_step_file="$(task_step_file "$task_properties_file" "$parent_step_id")"
+    [[ -n "$parent_step_file" ]] || die "parent step does not exist: $parent_step_id"
+    parent_state="$(read_value state "$parent_step_file")"
+    [[ "$parent_state" = running ]] || die "parent step is not active: $parent_step_id ($parent_state)"
+
+    while IFS=$'\t' read -r row_step_id row_parent_step_id row_kind row_order; do
+      [[ -n "$row_step_id" ]] || continue
+      [[ "$row_step_id" = "$requested_step_id" ]] && break
+      [[ "$row_parent_step_id" = "$parent_step_id" ]] || continue
+      prior_step_file="$(task_step_file "$task_properties_file" "$row_step_id")"
+      step_is_successful "$(read_value state "$prior_step_file")" \
+        || die "previous dynamic step is not complete: $row_step_id"
+    done < "$(task_steps_manifest "$task_properties_file")"
+  fi
+}
+
+start_step() {
+  require_jq
+  require_flock
+  ensure_store_root
+
+  local task_id=''
+  local requested_step_id=''
+  while (($# > 0)); do
+    case "$1" in
+      --task-id)
+        (($# >= 2)) || die "--task-id needs a value"
+        task_id="$2"
+        shift 2
+        ;;
+      --step-id)
+        (($# >= 2)) || die "--step-id needs a value"
+        requested_step_id="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown start-step argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$task_id" && -n "$requested_step_id" ]] || die "start-step requires --task-id and --step-id"
+  validate_task_id "$task_id"
+  validate_step_id "$requested_step_id"
+
+  local task_properties_file
+  task_properties_file="$(find_task_file "$task_id")"
+  local review_directory_path
+  review_directory_path="$(dirname "$(dirname "$(dirname "$task_properties_file")")")"
+  local lock_fd
+  exec {lock_fd}>"${review_directory_path}/run.lock"
+  flock "$lock_fd"
+
+  local run_state
+  local task_state
+  local step_properties_file
+  run_state="$(read_value state "$(run_property_file "$review_directory_path")")"
+  task_state="$(read_value state "$task_properties_file")"
+  [[ "$run_state" = running ]] || die "review run is not accepting step updates: $run_state"
+  [[ "$task_state" = running ]] || die "task is not accepting step updates: $task_id ($task_state)"
+  step_properties_file="$(task_step_file "$task_properties_file" "$requested_step_id")"
+  [[ -n "$step_properties_file" ]] || die "step not found: $requested_step_id"
+  ensure_step_can_start "$task_properties_file" "$step_properties_file"
+
+  write_value state running "$step_properties_file"
+  write_value started_at "$(date +%s)" "$step_properties_file"
+  write_value active_step "$requested_step_id" "$task_properties_file"
+  local step_value
+  step_value="$(step_json "$step_properties_file" "$task_properties_file")"
+
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+  jq -n --arg review_id "$(basename "$review_directory_path")" --arg task_id "$task_id" \
+    --arg current_step "$requested_step_id" --argjson step "$step_value" \
+    '{review_id: $review_id, task_id: $task_id, current_step: $current_step, step: $step}'
+}
+
+add_step() {
+  require_jq
+  require_flock
+  ensure_store_root
+
+  local task_id=''
+  local parent_step_id=''
+  local requested_step_id=''
+  local reason=''
+  while (($# > 0)); do
+    case "$1" in
+      --task-id)
+        (($# >= 2)) || die "--task-id needs a value"
+        task_id="$2"
+        shift 2
+        ;;
+      --parent-step-id)
+        (($# >= 2)) || die "--parent-step-id needs a value"
+        parent_step_id="$2"
+        shift 2
+        ;;
+      --step-id)
+        (($# >= 2)) || die "--step-id needs a value"
+        requested_step_id="$2"
+        shift 2
+        ;;
+      --reason)
+        (($# >= 2)) || die "--reason needs a value"
+        reason="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown add-step argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$task_id" && -n "$parent_step_id" && -n "$requested_step_id" && -n "$reason" ]] \
+    || die "add-step requires --task-id, --parent-step-id, --step-id, and --reason"
+  validate_task_id "$task_id"
+  validate_step_id "$parent_step_id"
+  validate_step_id "$requested_step_id"
+  [[ "$reason" != *$'\n'* && "$reason" != *$'\t'* ]] || die "step reason may not contain newlines or tabs"
+
+  local task_properties_file
+  task_properties_file="$(find_task_file "$task_id")"
+  local review_directory_path
+  review_directory_path="$(dirname "$(dirname "$(dirname "$task_properties_file")")")"
+  local lock_fd
+  exec {lock_fd}>"${review_directory_path}/run.lock"
+  flock "$lock_fd"
+
+  local run_state
+  local task_state
+  local active_step
+  local dynamic_parents
+  local parent_properties_file
+  local existing_step_file
+  local sibling_count
+  local next_order
+  local task_steps_directory_path
+  local step_directory_path
+  local step_properties_file
+  local artifact_path
+  local row_step_id
+  local row_parent_step_id
+  local row_kind
+  local row_order
+  run_state="$(read_value state "$(run_property_file "$review_directory_path")")"
+  task_state="$(read_value state "$task_properties_file")"
+  active_step="$(read_value active_step "$task_properties_file")"
+  dynamic_parents="$(read_value dynamic_parents "$task_properties_file")"
+  [[ "$run_state" = running ]] || die "review run is not accepting step updates: $run_state"
+  [[ "$task_state" = running ]] || die "task is not accepting step updates: $task_id ($task_state)"
+  [[ "$active_step" = "$parent_step_id" ]] || die "parent step is not the active step: $parent_step_id"
+  csv_contains "$dynamic_parents" "$parent_step_id" \
+    || die "dynamic steps are not allowed under parent step: $parent_step_id"
+  parent_properties_file="$(task_step_file "$task_properties_file" "$parent_step_id")"
+  [[ -n "$parent_properties_file" ]] || die "parent step does not exist: $parent_step_id"
+  [[ -z "$(read_value parent_step_id "$parent_properties_file")" ]] \
+    || die "dynamic parent must be a top-level step: $parent_step_id"
+  [[ "$(read_value state "$parent_properties_file")" = running ]] \
+    || die "parent step is not running: $parent_step_id"
+  existing_step_file="$(task_step_file "$task_properties_file" "$requested_step_id")"
+  [[ -z "$existing_step_file" ]] || die "step id already exists: $requested_step_id"
+
+  sibling_count=0
+  while IFS=$'\t' read -r row_step_id row_parent_step_id row_kind row_order; do
+    [[ "$row_parent_step_id" = "$parent_step_id" ]] || continue
+    sibling_count=$((sibling_count + 1))
+  done < "$(task_steps_manifest "$task_properties_file")"
+  ((sibling_count < 32)) || die "dynamic step limit reached for parent: $parent_step_id"
+
+  next_order="$(awk -F '\t' 'BEGIN { max = 0 } $4 + 0 > max { max = $4 + 0 } END { print max + 1 }' "$(task_steps_manifest "$task_properties_file")")"
+  task_steps_directory_path="$(task_steps_directory "$task_properties_file")"
+  step_directory_path="${task_steps_directory_path}/${requested_step_id}"
+  step_properties_file="${step_directory_path}/step.env"
+  artifact_path="${step_directory_path}/step.md"
+  mkdir -- "$step_directory_path"
+  {
+    printf 'step_id=%s\n' "$requested_step_id"
+    printf 'parent_step_id=%s\n' "$parent_step_id"
+    printf 'kind=dynamic\n'
+    printf 'state=pending\n'
+    printf 'order=%s\n' "$next_order"
+    printf 'reason=%s\n' "$reason"
+    printf 'artifact_path=%s\n' "$artifact_path"
+  } > "$step_properties_file"
+  printf '%s\t%s\tdynamic\t%s\n' "$requested_step_id" "$parent_step_id" "$next_order" \
+    >> "$(task_steps_manifest "$task_properties_file")"
+  local step_value
+  step_value="$(step_json "$step_properties_file" "$task_properties_file")"
+
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+  jq -n --arg review_id "$(basename "$review_directory_path")" --arg task_id "$task_id" \
+    --arg parent_step_id "$parent_step_id" --argjson step "$step_value" \
+    '{review_id: $review_id, task_id: $task_id, parent_step_id: $parent_step_id, step: $step}'
+}
+
+complete_step() {
+  require_jq
+  require_flock
+  ensure_store_root
+
+  local task_id=''
+  local requested_step_id=''
+  local requested_status='completed'
+  local reason=''
+  while (($# > 0)); do
+    case "$1" in
+      --task-id)
+        (($# >= 2)) || die "--task-id needs a value"
+        task_id="$2"
+        shift 2
+        ;;
+      --step-id)
+        (($# >= 2)) || die "--step-id needs a value"
+        requested_step_id="$2"
+        shift 2
+        ;;
+      --status)
+        (($# >= 2)) || die "--status needs a value"
+        requested_status="$2"
+        shift 2
+        ;;
+      --reason)
+        (($# >= 2)) || die "--reason needs a value"
+        reason="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown complete-step argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$task_id" && -n "$requested_step_id" ]] || die "complete-step requires --task-id and --step-id"
+  validate_task_id "$task_id"
+  validate_step_id "$requested_step_id"
+  [[ "$requested_status" = completed || "$requested_status" = failed || "$requested_status" = blocked ]] \
+    || die "step status must be completed, failed, or blocked"
+  if [[ "$requested_status" != completed ]]; then
+    [[ -n "$reason" ]] || die "--reason is required for a non-completed step"
+  fi
+  [[ "$reason" != *$'\n'* && "$reason" != *$'\t'* ]] || die "step reason may not contain newlines or tabs"
+
+  local task_properties_file
+  task_properties_file="$(find_task_file "$task_id")"
+  local review_directory_path
+  review_directory_path="$(dirname "$(dirname "$(dirname "$task_properties_file")")")"
+  local lock_fd
+  exec {lock_fd}>"${review_directory_path}/run.lock"
+  flock "$lock_fd"
+
+  local run_state
+  local task_state
+  local active_step
+  local step_properties_file
+  local step_state
+  local row_step_id
+  local row_parent_step_id
+  local row_kind
+  local row_order
+  local child_properties_file
+  local parent_step_id
+  local parent_properties_file
+  run_state="$(read_value state "$(run_property_file "$review_directory_path")")"
+  task_state="$(read_value state "$task_properties_file")"
+  active_step="$(read_value active_step "$task_properties_file")"
+  [[ "$run_state" = running ]] || die "review run is not accepting step updates: $run_state"
+  [[ "$task_state" = running ]] || die "task is not accepting step updates: $task_id ($task_state)"
+  [[ "$active_step" = "$requested_step_id" ]] || die "step is not active: $requested_step_id"
+  step_properties_file="$(task_step_file "$task_properties_file" "$requested_step_id")"
+  [[ -n "$step_properties_file" ]] || die "step not found: $requested_step_id"
+  step_state="$(read_value state "$step_properties_file")"
+  [[ "$step_state" = running ]] || die "step is not running: $requested_step_id ($step_state)"
+  parent_step_id="$(read_value parent_step_id "$step_properties_file")"
+
+  if [[ "$requested_status" = completed ]]; then
+    while IFS=$'\t' read -r row_step_id row_parent_step_id row_kind row_order; do
+      [[ "$row_parent_step_id" = "$requested_step_id" ]] || continue
+      child_properties_file="$(task_step_file "$task_properties_file" "$row_step_id")"
+      step_is_successful "$(read_value state "$child_properties_file")" \
+        || die "child step is not complete: $row_step_id"
+    done < "$(task_steps_manifest "$task_properties_file")"
+  fi
+
+  write_value state "$requested_status" "$step_properties_file"
+  write_value reason "$reason" "$step_properties_file"
+  write_value completed_at "$(date +%s)" "$step_properties_file"
+  if [[ "$requested_status" = completed && -n "$parent_step_id" ]]; then
+    write_value active_step "$parent_step_id" "$task_properties_file"
+  else
+    write_value active_step '' "$task_properties_file"
+  fi
+  if [[ "$requested_status" != completed ]]; then
+    if [[ -n "$parent_step_id" ]]; then
+      parent_properties_file="$(task_step_file "$task_properties_file" "$parent_step_id")"
+      write_value state "$requested_status" "$parent_properties_file"
+      write_value reason "child step ${requested_step_id}: ${reason}" "$parent_properties_file"
+    fi
+  fi
+  local step_value
+  step_value="$(step_json "$step_properties_file" "$task_properties_file")"
+
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+  jq -n --arg review_id "$(basename "$review_directory_path")" --arg task_id "$task_id" \
+    --arg status "$requested_status" --argjson step "$step_value" \
+    '{review_id: $review_id, task_id: $task_id, status: $status, step: $step}'
 }
 
 submit_task() {
@@ -618,22 +1177,7 @@ submit_task() {
   local task_properties_file
   local task_directory
   local report_path
-  local matching_run_count=0
-  review_directory_path=''
-  task_properties_file=''
-  for review_directory_path in "$review_store_root"/review-*; do
-    [[ -d "$review_directory_path" && ! -L "$review_directory_path" ]] || continue
-    local candidate_task_file
-    candidate_task_file="$(task_file_for_id "$review_directory_path" "$task_id")"
-    if [[ -n "$candidate_task_file" ]]; then
-      matching_run_count=$((matching_run_count + 1))
-      if ((matching_run_count > 1)); then
-        die "task id is not unique: $task_id"
-      fi
-      task_properties_file="$candidate_task_file"
-    fi
-  done
-  [[ -n "$task_properties_file" ]] || die "task not found: $task_id"
+  task_properties_file="$(find_task_file "$task_id")"
 
   review_directory_path="$(dirname "$(dirname "$(dirname "$task_properties_file")")")"
   local lock_file="${review_directory_path}/run.lock"
@@ -645,13 +1189,34 @@ submit_task() {
   run_state="$(read_value state "$(run_property_file "$review_directory_path")")"
   [[ "$run_state" = running ]] || die "review run is not accepting submissions: $run_state"
   local current_task_state
+  local active_step
+  local step_id
+  local step_state
+  local has_failure=false
   current_task_state="$(read_value state "$task_properties_file")"
   [[ "$current_task_state" = running ]] || die "task is already terminal: $task_id ($current_task_state)"
 
   task_directory="$(read_value task_dir "$task_properties_file")"
   report_path="$(read_value report_path "$task_properties_file")"
-  if [[ "$requested_status" = completed ]]; then
-    [[ -s "$report_path" ]] || die "completed task must contain a non-empty report: $report_path"
+  active_step="$(read_value active_step "$task_properties_file")"
+  [[ -z "$active_step" ]] || die "cannot submit while a step is active: $active_step"
+  [[ -s "$report_path" ]] || die "task must contain a non-empty report: $report_path"
+
+  while IFS=$'\t' read -r step_id parent_step_id kind order; do
+    [[ -n "$step_id" ]] || continue
+    step_state="$(read_value state "$(task_step_file "$task_properties_file" "$step_id")")"
+    if [[ "$requested_status" = completed ]]; then
+      [[ "$step_state" = completed ]] || die "completed task has an unfinished step: $step_id ($step_state)"
+    else
+      case "$step_state" in
+        failed|blocked) has_failure=true ;;
+        running) die "terminal task has an active step: $step_id" ;;
+        pending) ;;
+      esac
+    fi
+  done < "$(task_steps_manifest "$task_properties_file")"
+  if [[ "$requested_status" != completed && "$has_failure" != true ]]; then
+    die "failed or blocked task must contain a failed or blocked step"
   fi
 
   write_value state "$requested_status" "$task_properties_file"
@@ -672,17 +1237,65 @@ status_json() {
   local task_id=''
   local state='pending'
   local report_path=''
+  local current_step=''
+  local steps_json='[]'
 
   task_properties_file="$(task_file_for_rule "$run_directory_path" "$rule_id")"
   if [[ -n "$task_properties_file" ]]; then
     task_id="$(read_value task_id "$task_properties_file")"
     state="$(read_value state "$task_properties_file")"
     report_path="$(read_value report_path "$task_properties_file")"
+    current_step="$(read_value active_step "$task_properties_file")"
+    steps_json="$(task_steps_json "$task_properties_file")"
   fi
 
   jq -n --arg id "$rule_id" --arg name "$rule_name" --argjson required "$required" \
     --arg state "$state" --arg task_id "$task_id" --arg report_path "$report_path" \
-    '{rule_id: $id, name: $name, required: $required, state: $state, task_id: (if $task_id == "" then null else $task_id end), report_path: (if $report_path == "" then null else $report_path end)}'
+    --arg current_step "$current_step" --argjson steps "$steps_json" \
+    '{rule_id: $id, name: $name, required: $required, state: $state, task_id: (if $task_id == "" then null else $task_id end), report_path: (if $report_path == "" then null else $report_path end), current_step: (if $current_step == "" then null else $current_step end), steps: $steps}'
+}
+
+review_status() {
+  require_jq
+  ensure_store_root
+
+  local review_id=''
+  while (($# > 0)); do
+    case "$1" in
+      --review-id)
+        (($# >= 2)) || die "--review-id needs a value"
+        review_id="$2"
+        shift 2
+        ;;
+      *)
+        die "unknown status argument: $1"
+        ;;
+    esac
+  done
+  [[ -n "$review_id" ]] || die "status requires --review-id"
+  validate_review_id "$review_id"
+
+  local run_directory_path
+  run_directory_path="$(run_directory "$review_id")"
+  local rule_id
+  local rule_name
+  local rule_required
+  local status_line
+  local status_lines
+  status_lines="$(mktemp "${run_directory_path}/status.XXXXXX")"
+  : > "$status_lines"
+  while IFS=$'\t' read -r rule_id rule_name rule_required; do
+    [[ -n "$rule_id" ]] || continue
+    status_line="$(status_json "$run_directory_path" "$rule_id" "$rule_name" "$rule_required")"
+    printf '%s\n' "$status_line" >> "$status_lines"
+  done < "$(rules_file "$run_directory_path")"
+  local rules_json
+  rules_json="$(jq -s '.' "$status_lines")"
+  rm -f -- "$status_lines"
+  jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
+    --arg state "$(read_value state "$(run_property_file "$run_directory_path")")" \
+    --argjson rules "$rules_json" \
+    '{review_id: $review_id, artifact_dir: $artifact_dir, state: $state, rules: $rules}'
 }
 
 wait_for_run() {
@@ -849,7 +1462,11 @@ usage() {
 Usage:
   workflow-review start --project-root <path> [--rule-id <id>]...
   workflow-review get-task --review-id <review-id> --rule-id <id>
+  workflow-review start-step --task-id <task-id> --step-id <id>
+  workflow-review add-step --task-id <task-id> --parent-step-id <id> --step-id <id> --reason <text>
+  workflow-review complete-step --task-id <task-id> --step-id <id> [--status completed|failed|blocked] [--reason <text>]
   workflow-review submit --task-id <task-id> [--status completed|failed|blocked]
+  workflow-review status --review-id <review-id>
   workflow-review wait --review-id <review-id> [--timeout-seconds <seconds>]
   workflow-review cleanup --review-id <review-id>
 EOF
@@ -862,7 +1479,11 @@ main() {
   case "$subcommand" in
     start) start_run "$@" ;;
     get-task) get_task "$@" ;;
+    start-step) start_step "$@" ;;
+    add-step) add_step "$@" ;;
+    complete-step) complete_step "$@" ;;
     submit) submit_task "$@" ;;
+    status) review_status "$@" ;;
     wait) wait_for_run "$@" ;;
     cleanup) cleanup_run "$@" ;;
     help|--help|-h) usage ;;

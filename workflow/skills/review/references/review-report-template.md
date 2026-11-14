@@ -16,6 +16,13 @@ The reviewer writes this report directly to the `report_path` returned by
 
 <One short paragraph describing the result.>
 
+## Steps
+
+- `identify-change-surface`: `completed`
+- `check-boundary`: `completed`
+  - `inspect-dependent-boundary`: `completed` — <why this dynamic step was needed>
+- `write-report`: `completed`
+
 ## Findings
 
 ### Blocking

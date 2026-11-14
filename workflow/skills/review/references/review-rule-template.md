@@ -12,6 +12,8 @@ name: Architecture Boundary
 description: Protects the project's approved dependency direction and public boundaries.
 enabled: true
 required: true
+steps: identify-change-surface,check-boundary,write-report
+dynamic_parents: check-boundary
 paths:
   - src/**
 ---
@@ -21,6 +23,24 @@ paths:
 ## Scope
 
 Review changes under `src/` for violations of the approved dependency direction.
+
+## Review procedure
+
+Top-level steps run in order. A reviewer may add one-level child investigations only under steps
+listed in `dynamic_parents`; each child must have a concrete reason and evidence.
+
+### identify-change-surface
+
+Identify the changed project boundaries and the public behavior affected by the change.
+
+### check-boundary
+
+Check the changed dependencies against the approved dependency direction. If a new dependency
+crosses a boundary, add a child investigation to inspect the affected boundary in detail.
+
+### write-report
+
+Summarize the completed checks, findings, evidence, and limitations in the review report.
 
 ## Evidence to inspect
 
