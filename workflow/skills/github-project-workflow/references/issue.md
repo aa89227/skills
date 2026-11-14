@@ -9,7 +9,10 @@ decomposition and discovery work, also read [epic.md](epic.md).
 One Issue MUST represent one logical requirement. Implementation size, number of files, number of
 PRs, or use of a stack MUST NOT by itself cause the agent to split the Issue. Split only when the
 work contains separate logical requirements and the human or repository policy authorizes that
-split. Use multiple or stacked PRs for a large implementation of one requirement.
+split. Use multiple or stacked PRs for a large implementation of one requirement. A stacked Issue
+chain is appropriate only when each Issue is independently deliverable, reviewable, and acceptable,
+while its implementation branch depends on another Issue; the chain expresses integration order,
+not a replacement for the individual Issue requirements.
 
 An `Issue Role: Initiative` parent is a planning-container exception: it groups two or more child
 Requirements through GitHub's native parent/sub-issue relationship and has no implementation PR of

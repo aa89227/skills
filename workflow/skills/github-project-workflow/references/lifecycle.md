@@ -47,6 +47,12 @@ task.
 - **Required implementation** is every code, test, documentation, configuration, and migration
   change needed to satisfy the current acceptance criteria. A large implementation MAY use
   multiple PRs without creating multiple Issues.
+- **Stacked Issue chain** is a dependency-ordered set of separate Requirement Issues whose PRs use
+  GitHub base/head relationships such as `A → B → C → target`. Each Issue owns its requirement,
+  lifecycle, and approval; the chain owns only integration order and dependency context.
+- **Issue-local completion** means that one Issue's own implementation, checks, limitations, and
+  applicable internal review are complete. It does not require a sibling Issue in a stacked chain
+  to be merged, `Ready to Merge`, or `Done`.
 - **Mechanical integration adjustment** changes commit/branch mechanics or resolves a conflict
   without changing approved behavior. If behavior changes, it is implementation work.
 - **Internal review run** is the current, project-specific `workflow:review` check performed before
@@ -61,7 +67,7 @@ Metadata:
 | Review Mode | Use when | Implementation approval evidence |
 | --- | --- | --- |
 | `Collaborative` | Default; an independent reviewer can review the work | A current native GitHub `APPROVED` review from a human on every required PR |
-| `Solo Maintainer` | The human explicitly declares that the PR author is the sole maintainer/reviewer and no independent reviewer is available | A current-head review record on every required PR, all required checks and acceptance criteria complete, and a human directly changing Project Status from `In Review` to `Ready to Merge` |
+| `Solo Maintainer` | The human explicitly declares that the PR author is the sole maintainer/reviewer and no independent reviewer is available | A current-head review record on every required PR, all required checks and acceptance criteria complete, and a human directly changing Project Status from `In Review` to `Ready to Merge`; the agent maintains the derived PR record |
 
 The agent MUST NOT infer or select `Solo Maintainer` because a repository appears personal, a PR has
 no reviewers, or a review is inconvenient. The human must explicitly select it for the current Issue.
@@ -81,11 +87,11 @@ reason, exit criteria, and entry criteria in the row are all satisfied.
 | `Specifying` | `Ready` | Human action required | Required specification fields are current, scope and acceptance criteria are clear, no blocking open question remains, and a specification-type Issue has its actual contract and representative semantic-variant examples in the Issue or a directly linked versioned specification artifact, not only a decision record. A human directly changes Project Status to `Ready`; the agent only verifies this evidence. |
 | `Ready` | `In Progress` | Agent | The approved specification is frozen, the approved work has actually started, and the Design System gate check passes. For `Design System Scope: None`, ordinary lifecycle criteria are sufficient. For any non-`None` scope, `Implementation Gate: Open` is required; for `Build` or `Design+Build`, `Design System Phase: Contract Approved`, `Design System Approval: Approved`, the implementation plan, and validation targets are also required. A `Design` scope may use `In Progress` only for approved design artifacts and never as permission to run `build`. If the gate is `Blocked`, the agent MUST NOT enter `In Progress`, create an implementation branch, modify runtime code, or create an implementation PR. A `Discussion` Requirement MUST change to another Work Mode before this transition. |
 | `Ready` | `Specifying` | Agent after an identified material requirement change | Update the Issue body and invalidate the prior specification approval. |
-| `In Progress` | `In Review` | Agent | For `Delivery`, all required implementation is complete, required checks pass, all required PRs exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. For any repository-artifact result, the current project-specific `workflow:review` run must have completed with no unresolved blocking finding. An ephemeral internal review run is valid only for this transition in the current session; if its artifacts are gone or the implementation changes, run it again. During reconciliation, persisted human/PR review history for an already processed PR MAY satisfy the GitHub reviewable condition, but it does not recreate a missing internal review run for a new transition. |
+| `In Progress` | `In Review` | Agent | For `Delivery`, the Issue-local required implementation is complete, required checks pass, all PRs assigned to this Issue exist and are reviewable, limitations are recorded, and the release note matches the result. For `Research`/`Prototype`, the bounded evidence or experiment is complete, the result and decision are recorded, and any repository artifact has reviewable PRs and passing required checks. For any repository-artifact result, the current project-specific `workflow:review` run must have completed with no unresolved blocking finding. An ephemeral internal review run is valid only for this transition in the current session; if its artifacts are gone or the implementation changes, run it again. A separate sibling or predecessor Issue in a stacked Issue chain need not be merged, `Ready to Merge`, or `Done`. After the criteria pass, the agent MUST make the related PRs reviewable and execute this transition without waiting for Human. During reconciliation, persisted human/PR review history for an already processed PR MAY satisfy the GitHub reviewable condition, but it does not recreate a missing internal review run for a new transition. |
 | `In Progress` | `Specifying` | Agent after an identified material requirement change | Update the Issue body before further implementation; do not preserve an obsolete approval. |
 | `In Review` | `In Progress` | Agent | Human or CI feedback requires implementation work, or current approval/readiness is invalidated. Record feedback and the next verification. |
 | `In Review` | `Specifying` | Agent after an identified material requirement change | The feedback changes behavior, acceptance criteria, scope, or an important constraint. Update the Issue body. |
-| `In Review` | `Ready to Merge` | Agent after valid Collaborative approval; Human action required for Solo Maintainer or no-artifact discovery acceptance | Every required artifact PR satisfies the selected Review Mode: a current native GitHub `APPROVED` review in `Collaborative` mode, or a current-head solo-maintainer review record in `Solo Maintainer` mode followed by a direct human Project Status change to `Ready to Merge`; or a Research/Prototype item with no repository artifact has a direct Human acceptance of its recorded result. All required work is covered and no material change is pending. |
+| `In Review` | `Ready to Merge` | Agent after valid Collaborative approval; Human action required for Solo Maintainer or no-artifact discovery acceptance | Every required artifact PR satisfies the selected Review Mode: a current native GitHub `APPROVED` review in `Collaborative` mode, or a current-head solo-maintainer review record in `Solo Maintainer` mode followed by a direct human Project Status change to `Ready to Merge`; the agent synchronizes the derived PR record and MUST NOT ask the human to edit it. A Research/Prototype item with no repository artifact has a direct Human acceptance of its recorded result. All required work is covered and no material change is pending. |
 | `Ready to Merge` | `In Progress` | Agent | A material implementation change is required, approval is no longer valid, or integration reveals a behavior change that must be implemented. Re-verify and re-review. |
 | `Ready to Merge` | `Specifying` | Agent after an identified material requirement change | Integration or review reveals that the requirement itself must change. Update the Issue body and obtain new specification approval. |
 | `Ready to Merge` | `Done` | Agent | Approved implementation is integrated into the intended remote target branch and all Done criteria below are true. |
@@ -150,35 +156,46 @@ permission to create an implementation branch or Draft PR; it must first complet
 agent MAY code, commit, push implementation branches, create or update Draft PRs, test, document,
 research, experiment, and address review feedback. Every implementation PR MUST start as Draft
 unless the repository does not support Draft PRs or a human explicitly requests immediate review.
-A failed check is a signal, not a new lifecycle status.
+A failed check is a signal, not a new lifecycle status. When this Issue's own implementation and
+applicable review gate are complete, the agent MUST transition it to `In Review` in the same
+workflow operation; it MUST NOT leave a completed Issue here while waiting for human approval.
+While one Issue in a stacked Issue chain waits for human review, the agent MAY continue separately
+authorized work on other Issues in the chain.
 
-Move to `In Review` only when the whole Issue—not merely one PR—is reviewable.
-For repository-artifact work, this also requires a completed current `workflow:review` run using the
-project's enabled rules. All selected required rules must be terminal `completed`, their reports
-must exist in the external run directory, and no unresolved `Blocking` finding may remain. The run
-directory is not a durable source of truth; if it is unavailable before this transition, rerun the
-review. Passing the internal gate does not supply the human approval required for `In Review` →
-`Ready to Merge`. A `Research`/`Prototype` item with no repository artifact does not require this
-internal review gate; its bounded result still requires the applicable human discovery acceptance.
+Move to `In Review` only when the whole Issue—not merely one PR—is reviewable. For an Issue with
+multiple PRs, this means every PR assigned to that Issue; it does not include sibling Issues in a
+stacked Issue chain. For repository-artifact work, this also requires a completed current
+`workflow:review` run using the project's enabled rules. All selected required rules must be
+terminal `completed`, their reports must exist in the external run directory, and no unresolved
+`Blocking` finding may remain. The run directory is not a durable source of truth; if it is
+unavailable before this transition, rerun the review. After this gate passes, the agent MUST mark
+the Issue's related Draft PRs ready for review and change Project Status to `In Review`; a human
+must not be asked to perform either synchronization step. Passing the internal gate does not supply
+the human approval required for `In Review` → `Ready to Merge`. A `Research`/`Prototype` item with
+no repository artifact does not require this internal review gate; its bounded result still requires
+the applicable human discovery acceptance.
 
 ### In Review
 
 `In Review` means every required implementation slice, or every required discovery result, is
-ready for human review. The agent MAY answer questions and make review-driven changes, but MUST
-NOT self-approve or infer approval from silence, CI, tests, or another agent. Implementation
-feedback returns to `In Progress`; a material requirement change returns to `Specifying`. In
-`Collaborative` mode, human approval means a current native `APPROVED` review on every required PR.
-In `Solo Maintainer` mode, human acceptance means that every required PR records the current head
-that was reviewed and a human directly changes Project Status to `Ready to Merge` after reviewing
-the implementation. The internal project-specific review is a prerequisite for entering this
-status, but it is not human approval. Human approval or acceptance of the current implementation or
-discovery result permits `Ready to Merge`.
+ready for human review. It does not mean that every sibling Issue in a stacked Issue chain is ready.
+The agent MAY answer questions and make review-driven changes, but MUST NOT self-approve or infer
+approval from silence, CI, tests, or another agent. Implementation feedback returns to `In Progress`;
+a material requirement change returns to `Specifying`. In `Collaborative` mode, human approval
+means a current native `APPROVED` review on every required PR. In `Solo Maintainer` mode, human
+acceptance means that every required PR records the current head that was reviewed and a human
+directly changes Project Status to `Ready to Merge` after reviewing the implementation; the agent
+writes the derived PR review record. The internal project-specific review is a prerequisite for
+entering this status, but it is not human approval. Human approval or acceptance of the current
+implementation or discovery result permits `Ready to Merge`.
 
 ### Ready to Merge
 
 `Ready to Merge` means the current repository-artifact implementation has valid human approval
 under its selected Review Mode, or a no-artifact discovery result has Human acceptance, and the item
-is eligible for integration or closure. No material implementation change may be introduced here.
+is eligible for integration or closure. In a stacked Issue chain it may remain here while waiting
+for predecessor Issues to be integrated; this status means approved and mergeable in dependency
+order, not necessarily immediately merged. No material implementation change may be introduced here.
 A mechanical rebase or conflict resolution MAY remain in this status only when approved behavior is
 preserved and the approval remains valid.
 If the platform dismisses approval or behavior changes, use
@@ -222,9 +239,9 @@ approval may be inferred from the other. For repository-artifact implementation,
 only when every required PR satisfies the selected Review Mode: `Collaborative` requires a
 verifiable human native GitHub review state of `APPROVED` for the PR's current head; `Solo
 Maintainer` requires an explicit Issue selection, a PR `Review` section containing the full current
-head SHA and `Human Review: Complete` for each required PR, all required checks and acceptance
-criteria complete, and a verifiable human directly changing Project Status from `In Review` to
-`Ready to Merge` after that review. For a
+head SHA and agent-synchronized `Human Review: Complete` for each required PR, all required checks
+and acceptance criteria complete, and a verifiable human directly changing Project Status from
+`In Review` to `Ready to Merge` after that review. The human does not edit the PR body. For a
 Research/Prototype item with no repository artifact, acceptance is valid only when a verifiable
 human directly changes its Project Status from `In Review` to `Ready to Merge` after the recorded
 result is complete. Chat-only statements, comments without the required evidence, unidentifiable
@@ -252,9 +269,15 @@ Before every lifecycle status change, the agent MUST:
 8. For `In Progress` → `In Review` repository-artifact work, run `workflow:review` and verify the
    current run's required tasks, reports, and blocking-finding result. Do not reuse a missing or
    stale ephemeral run.
-9. Verify the target status entry criteria and human gate, if any.
-10. Execute the transition.
-11. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields.
+9. Verify the target status entry criteria and human gate, if any. `In Progress` → `In Review`
+   has no human approval gate; its later `In Review` → `Ready to Merge` approval MUST NOT block this
+   agent transition.
+10. Execute the transition. For `In Progress` → `In Review`, the agent MUST also mark related Draft
+    PRs ready for review in the same operation.
+11. Synchronize affected metadata, PR descriptions, Issue state, and blocker fields using
+    [publication.md](publication.md). In `Solo Maintainer` mode, update the derived PR review record
+    only after the direct human `Ready to Merge` status change is verified; never ask the human to
+    edit that record manually.
 12. Emit a `Workflow Checkpoint` using [checkpoint.md](checkpoint.md).
 13. Record any missing condition instead of transitioning; emit a checkpoint before returning
    control to Human.
@@ -275,6 +298,9 @@ The agent MAY replay the missing allowed transitions in order when evidence exis
 4. The remote target branch contains the approved result.
 5. Acceptance criteria and final verification pass.
 
-When these facts are present, reconcile through `In Review` → `Ready to Merge` → `Done` using the
-ordinary protocol. When any fact is missing—especially approval or authorization for target-branch
-content—retain the current status and report the exact missing condition.
+When the Issue-local implementation and checks are complete but the Project Status is stale at
+`In Progress`, first reconcile through `In Progress` → `In Review` using a fresh internal review run
+and make its PRs reviewable. Do not wait for a human to move it to `In Review`. When approval facts
+are also present, continue through `Ready to Merge` → `Done` using the ordinary protocol. When any
+fact is missing—especially approval or authorization for target-branch content—retain the current
+status and report the exact missing condition.

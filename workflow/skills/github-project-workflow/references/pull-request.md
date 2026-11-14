@@ -1,7 +1,8 @@
 # Pull Request and Stack Specification
 
 Use this reference when creating, updating, reviewing, or integrating implementation PRs. A PR
-is the review source of truth; the Project Status still describes the whole Issue.
+is the review source of truth for its diff, checks, reviews, and base/head relationship; the Project
+Status still describes its whole Primary Issue.
 
 ## Primary Issue contract
 
@@ -54,6 +55,12 @@ For a stack, replace the Stack section with human-readable context such as `Stac
 `Previous: #201`, and `Next: #203`. This context is not the dependency source of truth; the
 GitHub-native base/head branch relationship is authoritative.
 
+The `Review` section is agent-managed workflow metadata. In `Solo Maintainer` mode, the agent
+records the reviewed head and changes `Human Review: Pending` to `Human Review: Complete` only after
+verifying the human's direct Project Status change to `Ready to Merge`. The human MUST NOT be asked
+to edit these lines manually. In `Collaborative` mode, the native GitHub review state is
+authoritative; any body value is only a synchronized display.
+
 ## Creation and review
 
 - Every implementation PR MUST start as Draft unless the repository does not support Draft PRs or
@@ -63,22 +70,24 @@ GitHub-native base/head branch relationship is authoritative.
   `Implementation Gate: Blocked` forbids an implementation PR; see
   [design-system-handoff.md](design-system-handoff.md). A gate-blocked Issue must complete the
   design handoff before creating a runtime implementation PR.
-- A PR becoming Ready for Review MUST NOT by itself move the Issue to `In Review`.
-- Move the Issue to `In Review` only when all required implementation slices and PRs are reviewable,
-  required checks pass, known limitations are recorded, the Issue release note matches the actual
-  result, and the current project-specific `workflow:review` gate has passed. The internal gate is
-  not a human GitHub approval and does not replace the selected Review Mode.
+- When an Issue-local implementation is complete, required checks pass, known limitations are
+  recorded, the Issue release note matches the actual result, and the current project-specific
+  `workflow:review` gate has passed, the agent MUST move the Issue to `In Review` and mark its Draft
+  PRs ready for review in the same operation. The agent MUST NOT leave the completed Issue in
+  `In Progress` while waiting for human review.
+- A PR becoming Ready for Review MUST NOT by itself move the Issue to `In Review`; the transition is
+  performed by the agent only after the Issue-local exit criteria and internal gate pass.
 - In `Collaborative` mode, human approval for `In Review` → `Ready to Merge` MUST be the native
-  GitHub `APPROVED` review state on every required PR in the Issue, including every required stack
-  slice. One approved PR does not approve an incomplete stack.
+  GitHub `APPROVED` review state on every required PR assigned to the Issue. For a stacked Issue
+  chain, approval is per Issue; one approved PR does not approve another Issue's implementation.
 - In `Solo Maintainer` mode, native self-approval is impossible and MUST NOT be fabricated. Every
   required PR MUST record `Review Mode: Solo Maintainer` and the full current head SHA in its
   `Review` section. After reviewing the current implementation, checks, acceptance criteria, and
-  limitations, the human maintainer MUST change `Human Review: Pending` to `Human Review: Complete`
-  and directly change the Issue's Project Status from `In Review` to `Ready to Merge`. The agent
-  MUST verify that the status change was made by a human after the recorded SHA was reviewed and
-  that no material change is pending. A chat message, agent status update, or passing checks alone
-  is insufficient.
+  limitations, the human maintainer's only completion action is to directly change the Issue's
+  Project Status from `In Review` to `Ready to Merge`. The agent MUST verify that the status change
+  was made by a human after the recorded SHA was reviewed, then synchronize `Human Review: Complete`
+  in the PR body through [publication.md](publication.md). A chat message, manual PR-body edit,
+  agent status update, or passing checks alone is insufficient.
 - Review comments, requested changes, CI failure, and test failure are signals. They do not create
   lifecycle statuses. Implementation work routes to `In Progress`; a material requirement change
   routes to `Specifying`.
@@ -103,23 +112,51 @@ implementation approval, or infer approval from silence, passing checks, or anot
 repository branch protection still requires a native approval that a solo maintainer cannot provide,
 report that repository policy blocker; do not bypass it silently.
 
-## Multiple and stacked PRs
+## Multiple PRs for one Issue
 
-Use multiple or stacked PRs when one logical Issue is large or when reviewable slices improve
-integration. All PRs for the same requirement MUST use the same `Primary Issue` number. Each stack
-PR MUST have its own semantic branch and a correct GitHub base/head relationship.
+Use multiple PRs for one logical Issue when the implementation is large or reviewable slices
+improve integration. All PRs for the same requirement MUST use the same `Primary Issue` number.
+Each PR MUST have its own semantic branch and a correct GitHub base/head relationship. The Issue
+does not enter `In Review` until every required PR assigned to that Issue is reviewable.
+
+## Stacked Issues
+
+A stacked Issue chain is different from multiple PRs for one Issue. In a stacked Issue chain, each
+PR identifies its own Issue as `Primary Issue`, and the GitHub base/head relationship connects the
+Issues, for example:
+
+```text
+Issue A / PR A: feature/a → target
+Issue B / PR B: feature/b → feature/a
+Issue C / PR C: feature/c → feature/b
+```
+
+The agent MUST:
+
+- maintain each Issue's lifecycle and human approval independently;
+- allow a later Issue to be `In Progress`, `In Review`, or `Ready to Merge` before a predecessor is
+  merged or `Done`;
+- review each PR against its actual base/head relationship and current head;
+- integrate the chain in dependency order; and
+- invalidate or re-verify downstream review evidence after a material upstream change.
+
+The `Previous` and `Next` lines in PR bodies are only readable context. Native base/head data is the
+dependency source of truth. A stack may wait in `Ready to Merge` without being immediately merged.
 
 The dependency order is determined by the actual branch relationship and GitHub PR base/head data.
 The PR description's `Stack: n/m`, `Previous`, and `Next` values are only human-readable context and
 MUST be corrected when relationships change.
 
-Before review, verify that every required slice is present, reviewable, and tested in the intended
-combination. Before `Done`, integrate the stack in dependency order or use an approved controlled
-fallback, then verify the final target branch—not merely the top PR's status.
+Before review of one Issue, verify every PR assigned to that Issue. For a stacked Issue chain, this
+check is performed independently for each Issue; the chain does not need to be complete before a
+slice enters review. Before `Done`, integrate the stack in dependency order or use an approved
+controlled fallback, then verify the final target branch—not merely the top PR's status.
 
 ## PR state reconciliation
 
-When a PR is merged, closed, draft, or approved, compare that fact with the Issue's Project Status
-and the remote target branch. A GitHub PR `Merged` state proves only that GitHub recorded a merge;
-it does not prove that the whole Issue is integrated or that acceptance criteria are met. Follow
-[lifecycle.md](lifecycle.md) and [git.md](git.md) before advancing the Issue.
+When a PR is merged, closed, draft, or approved, compare that fact with its Primary Issue's Project
+Status and the remote target branch. A GitHub PR `Merged` state proves only that GitHub recorded a
+merge; it does not prove that the whole Issue is integrated or that acceptance criteria are met.
+For a stacked Issue chain, reconcile the affected Issue independently and preserve the dependency
+order. Follow [lifecycle.md](lifecycle.md), [publication.md](publication.md), and [git.md](git.md)
+before advancing the Issue.

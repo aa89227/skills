@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.7"
+  version: "1.8"
   tags: ["github", "project", "issue", "pull-request", "epic", "roadmap", "priority", "initialization", "workflow", "checkpoint", "release"]
 ---
 
@@ -19,7 +19,8 @@ metadata:
 
 Use this skill to make a GitHub Issue recoverable across agent sessions and to keep requirement,
 review, integration, lifecycle, and release facts in their designated sources of truth. The
-workflow supports one PR, multiple PRs, stacked PRs, milestones, releases, and human handoff.
+workflow supports one PR, multiple PRs, stacked PRs, stacked Issues, milestones, releases, and
+human handoff.
 
 This skill is applicable when work is represented by a GitHub Issue and Project. For a purely
 local task with no tracked requirement, do not invent a Project lifecycle around it.
@@ -170,6 +171,9 @@ choice.
   [references/issue.md](references/issue.md#mandatory-reader-first-preflight) before creating or
   revising an Issue. A draft that fails the preflight MUST be rewritten before any GitHub Issue
   mutation.
+- MUST use [references/publication.md](references/publication.md) for non-trivial Issue and PR body
+  publication. Stage the body outside the repository, publish with `--body-file`, verify the
+  read-back content, and keep native Project/PR states in their structured GitHub fields.
 - MUST treat Issue Priority as planning metadata, not a lifecycle status, review result, severity
   score, or roadmap horizon; use only the values and rules in [references/priority.md](references/priority.md).
 - MUST record a reason and supporting evidence whenever Priority is assigned or changed. Do not
@@ -199,8 +203,10 @@ choice.
   from `In Progress` to `In Review`: the project review rules must exist, every selected required
   rule must complete, and no unresolved `Blocking` finding may remain. This internal run is
   ephemeral and does not replace a human GitHub review or approval.
-- MUST stop the transition and report the missing condition when an entry criterion, exit
-  criterion, allowed transition, or required human approval is absent.
+- MUST stop the specific transition and report the missing condition when its entry criterion, exit
+  criterion, allowed transition, or required human approval is absent. The absence of approval for
+  the later `In Review` → `Ready to Merge` transition MUST NOT block the agent from completing
+  `In Progress` → `In Review` when that transition's own criteria pass.
 - MUST preserve unknown local changes. MUST NOT reset, clean, restore, overwrite, or destructively
   check out them to make the workspace convenient.
 
@@ -215,7 +221,7 @@ choice.
 | Pull request(s) | Review: implementation diff, CI, review discussion/history, and stack relationships |
 | Remote target branch | Integration: what is actually integrated |
 | GitHub Project workflow configuration | Auto-add rules, item-added rules, field definitions, and automations; changes require explicit setup confirmation |
-| GitHub Project Status | Lifecycle of the whole Issue, never one PR |
+| GitHub Project Status | Lifecycle of the whole Issue; separate stacked Issues each have independent lifecycle, never one PR |
 | GitHub Project Priority or Issue Workflow Metadata | Current action order for the whole Issue; its reason and evidence remain in the Issue body |
 | GitHub Milestone | Planned release version |
 | Git release tag | Exact commit selected as a release target |
@@ -254,6 +260,22 @@ For large or uncertain product requests, `Discussion`, `Research`, `Prototype`, 
 work-mode metadata, not lifecycle statuses. Read [references/epic.md](references/epic.md); do not
 create lifecycle statuses for those modes.
 
+### Stack-aware lifecycle
+
+There are two different multi-PR shapes and the agent MUST keep them separate:
+
+- Multiple PRs for one Issue: every PR uses the same Primary Issue and the Issue enters `In Review`
+  only when all of that Issue's required PRs are reviewable.
+- A stacked Issue chain: each Issue has its own Primary Issue and lifecycle, while the PR base/head
+  relationship expresses the integration dependency. A later Issue MAY be `In Progress`, `In Review`,
+  or `Ready to Merge` before an earlier Issue is merged or `Done`.
+
+For a stacked Issue chain, review readiness and human approval are per Issue. Merge order remains
+the stack's dependency order. A material change to an earlier slice MAY invalidate downstream review
+evidence; the agent MUST rebase, re-verify, or re-review affected downstream Issues before merging
+them. Waiting for human approval or integration of one stack slice MUST NOT freeze independent work
+on another slice when the user has authorized the stack to proceed.
+
 ## Human approval gates
 
 The following are the workflow's human approval gates:
@@ -282,12 +304,13 @@ or select `Solo Maintainer` from repository ownership, missing reviewers, or an 
 In `Collaborative` mode, repository-artifact implementation approval is a current native GitHub
 `APPROVED` review from a human on every required PR. In `Solo Maintainer` mode, the PR author cannot
 create a native approval for their own PR, so the workflow uses a constrained human acceptance path:
-every required PR records the selected mode, the full current head SHA, and a completed human review,
-all required checks and acceptance criteria are complete, and a human directly changes Project Status
-from `In Review` to `Ready to Merge` after reviewing the current implementation. The agent verifies
-the human actor, the current head, and the remaining readiness conditions; it MUST NOT create a fake
-review or make that human status change itself. Repository branch protection remains authoritative
-and this workflow MUST NOT silently bypass a native-review requirement enforced by the repository.
+every required PR records the selected mode and full current head SHA, all required checks and
+acceptance criteria are complete, and a human directly changes Project Status from `In Review` to
+`Ready to Merge` after reviewing the current implementation. The agent then synchronizes the
+derived PR `Human Review: Complete` record; the human MUST NOT edit the PR body for this purpose.
+The agent MUST NOT create a fake native review or make the human status change itself. Repository
+branch protection remains authoritative and this workflow MUST NOT silently bypass a native-review
+requirement enforced by the repository.
 
 For a no-artifact `Research`/`Prototype` item, discovery approval remains a human Project Status
 change to `Ready to Merge` after the recorded result is reviewable. The human action/review must be
@@ -310,9 +333,12 @@ At session end, update the GitHub artifacts with the latest requirement snapshot
 description, pushed progress, verification, blockers, and stack relationship. Do not present the
 Issue body or a decision record as a substitute for the current implementation, and do not create a
 separate handoff file or force an unfinished task into review. If Delivery implementation has
-started but is incomplete, keep the Issue `In Progress` with a Draft PR. If no-artifact discovery
-work has started but is incomplete, keep it `In Progress` and record the next evidence or
-experiment; if work has not started, keep the truthful earlier status.
+started but is incomplete, keep the Issue `In Progress` with a Draft PR. If its own implementation
+is complete, checks pass, and the current internal review gate passes, the agent MUST complete
+`In Progress` → `In Review` in the same workflow run and make the related PR reviewable; it MUST NOT
+leave a completed Issue in `In Progress` merely because human approval has not happened yet. If
+no-artifact discovery work has started but is incomplete, keep it `In Progress` and record the next
+evidence or experiment; if work has not started, keep the truthful earlier status.
 
 ## Reference routing
 
@@ -329,6 +355,8 @@ Read only the references needed for the current operation:
 - Assign or reassess Issue Priority and record its rationale: [priority.md](references/priority.md)
 - Initialize, inspect, or configure Project fields, workflows, automations, and Labels: [initialization.md](references/initialization.md)
 - Create/revise/review/stack PRs or determine review readiness: [pull-request.md](references/pull-request.md)
+- Stage, publish, and verify Issue/PR bodies or synchronize native metadata:
+  [publication.md](references/publication.md)
 - Branches, commits, rebase, force-push, merge, local integration, or unknown changes: [git.md](references/git.md)
 - Takeover, reconciliation, or session handoff: [session-protocol.md](references/session-protocol.md)
 - Milestone planning, eligibility, changelog, or GitHub Release: [release.md](references/release.md)
@@ -345,6 +373,9 @@ smallest set that covers all affected sources of truth.
   Only `Implementation Gate: Open` passes the Design System gate; the complete conditions are in
   [design-system-handoff.md](references/design-system-handoff.md).
 - MUST NOT merge or integrate before `In Review` → `Ready to Merge` has human approval.
+- MUST NOT leave an Issue in `In Progress` after its own implementation and applicable internal
+  review gate are complete; transition it to `In Review` and emit the checkpoint before waiting for
+  human approval.
 - MUST NOT push implementation commits to the target branch before that implementation approval.
 - MUST prefer GitHub PR merge. Local integration is a controlled fallback only, and must follow
   [references/git.md](references/git.md) and reconcile every affected PR honestly.

@@ -13,6 +13,10 @@ release target exists, and record the chosen target in the PR context.
 The target branch is the branch whose remote content must contain the complete approved result. A
 local branch, a PR label, or a merge button state is not sufficient evidence.
 
+For a stacked Issue chain, the target branch and each intermediate base branch are determined from
+the actual PR base/head relationships. A predecessor Issue need not be `Done` before a successor is
+implemented or reviewed, but the approved chain MUST be integrated in dependency order.
+
 ## Branch naming
 
 Use:
@@ -76,6 +80,10 @@ approval MUST still be valid. The agent MUST perform all of the following:
 9. Verify the remote target branch contains the expected commit/tree and acceptance result.
 10. Reconcile every affected PR: identify PRs whose approved implementation is now present,
     leave the honest reconciliation comment, and close every such PR that is still open.
+
+For a stacked Issue chain, apply this procedure to the next eligible slice in base/head order. Set
+`Done` only for an Issue whose own approved PRs are integrated and verified; do not mark every Issue
+in the chain `Done` merely because the top PR or a local combined tree exists.
 
 The reconciliation comment SHOULD follow this form, with real values substituted:
 

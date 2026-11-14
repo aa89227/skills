@@ -58,10 +58,11 @@ affected operation when any of these conditions applies:
    examples. Do not treat that approval as evidence that the target branch already implements it.
 2. `In Review` → `Ready to Merge` needs implementation approval. In `Collaborative` mode, tell
    Human to submit a native GitHub `APPROVED` review on every required artifact PR. In `Solo
-   Maintainer` mode, tell Human to review the current head of every required PR, record the full
-   SHA and completed human review, then directly set Project Status to `Ready to Merge`. For a
-   Research/Prototype item with no repository artifact, tell Human to set its Project Status to
-   `Ready to Merge` after reviewing the recorded result.
+   Maintainer` mode, tell Human to review the current head of every required PR, then directly set
+   Project Status to `Ready to Merge`; the agent records the full SHA and synchronizes the completed
+   review in the PR body. Do not ask Human to edit PR text. For a Research/Prototype item with no
+   repository artifact, tell Human to set its Project Status to `Ready to Merge` after reviewing the
+   recorded result.
 3. A Design System Issue has `Implementation Gate: Blocked` at `Ready` → `In Progress`. Read
    [design-system-handoff.md](design-system-handoff.md), report the missing Experience Brief,
    contract approval, mapping, plan, or validation target, and do not create an implementation
@@ -92,7 +93,8 @@ criteria permit an agent transition, including:
 
 - `Inbox` → `Specifying`;
 - `Ready` → `In Progress` when approved work actually starts;
-- `In Progress` → `In Review` when the complete Requirement or discovery result is reviewable;
+- `In Progress` → `In Review` when the complete Issue-local Requirement or discovery result is
+  reviewable; the agent also makes its Draft PRs ready for review and does not wait for Human;
 - `In Review` → `In Progress` for implementation feedback or invalidated readiness;
 - `Ready to Merge` → `Done` after approved integration and final verification; and
 - ordinary Issue, PR, branch, test, metadata, and reconciliation work that does not hit a
@@ -116,9 +118,9 @@ When no hard-pause condition overrides the normal path, use the following determ
 | `Inbox` | `Agent: organize the Issue and move to Specifying when requirement work starts.` |
 | `Specifying` | `Agent: update the current requirement snapshot`; when criteria are complete, `Human: set Project Status to Ready`. |
 | `Ready` | `Agent: run the Design System gate check when scope is non-`None`; begin the approved Work Mode and change to `In Progress` only when the gate is `Open` and work actually starts. |
-| `In Progress` | `Agent: continue the approved implementation or discovery work, complete the project-specific workflow:review gate when applicable, and prepare the complete result for human review.` |
-| `In Review` | `Human: review the complete result`; then provide the required approval for the selected Review Mode or discovery acceptance. |
-| `Ready to Merge` | `Agent: verify approval, checks, target branch, and integrate using the GitHub merge policy.` |
+| `In Progress` | `Agent: continue the approved implementation or discovery work; when this Issue-local result and the applicable workflow:review gate are complete, automatically move to In Review and make related PRs reviewable. Keep In Progress only for incomplete or blocked work.` |
+| `In Review` | `Human: review the complete Issue-local result`; then provide the required approval for the selected Review Mode or discovery acceptance. Other independently authorized stack Issues may continue while this one waits. |
+| `Ready to Merge` | `Agent: verify approval, checks, target branch, and integrate using the GitHub merge policy; wait for stack predecessors only when dependency order requires it.` |
 | `Done` | `None`; terminal. Close the Issue if not already closed. |
 | `Cancelled` | `None`; terminal. Preserve the cancellation reason and history. |
 
@@ -130,5 +132,8 @@ acceptance still required.
 ## Session-end checkpoint
 
 At session end, the agent MUST emit a checkpoint even when no lifecycle status changed. It MUST
-state the truthful current status and the next resumable action. The agent MUST NOT advance to
-`In Review`, `Ready to Merge`, or `Done` merely to produce a cleaner checkpoint.
+state the truthful current status and the next resumable action. If an Issue-local implementation
+is complete and its applicable internal review gate passes, the agent MUST perform
+`In Progress` → `In Review` and synchronize PR readiness before ending the session. The agent MUST
+NOT leave completed work in `In Progress` merely because human approval is still pending, and MUST
+NOT advance to `Ready to Merge` or `Done` merely to produce a cleaner checkpoint.

@@ -51,7 +51,8 @@ Confirm that Project Status describes the Issue rather than one PR.
 ### 3. Recover implementation and review
 
 Find every related PR using the exact `Primary Issue: #<number>` convention and repository/branch
-relationship. For each PR, read:
+relationship. Also inspect neighboring PRs whose base/head branches form a stacked Issue chain, even
+when their `Primary Issue` numbers differ. For each PR, read:
 
 - Draft or Ready state;
 - selected Review Mode, human reviews or solo-maintainer review records, and approval validity;
@@ -60,7 +61,11 @@ relationship. For each PR, read:
 - stack dependency and ordering; and
 - summary and verification in the PR body.
 
-Do not assume the newest or top PR is the complete implementation.
+For multiple PRs with the same `Primary Issue`, all such PRs are required slices of one Issue. For
+a stacked Issue chain with different Primary Issues, each Issue owns only its own PRs and lifecycle;
+the chain relationship controls integration order. Do not assume the newest or top PR is the
+complete implementation, and do not make a predecessor's unmerged status block an independently
+authorized successor Issue.
 
 ### 4. Recover repository state
 
@@ -99,6 +104,10 @@ allowed transition only after the evidence and approval conditions are satisfied
   direction.
 - A required stack PR is missing, closed without integration, or points to the wrong base: keep the
   Issue from review/done, repair the relationship if safe, or report the missing condition.
+- An Issue remains `In Progress` although its own implementation, checks, and current internal
+  review gate are complete: run the transition protocol, make its Draft PRs reviewable, and advance
+  that Issue to `In Review`. Do not wait for a human to perform this transition, and do not block
+  separate authorized Issues merely because this one is waiting for human approval.
 
 ## Session-end protocol
 
@@ -109,6 +118,8 @@ Before ending a session, the agent MUST ensure:
   state, not inferred from the Issue body or a decision record;
 - Project Status, Priority, Priority rationale, and blocker metadata reflect verified facts;
 - every PR description has the correct Primary Issue, summary, verification, and stack context;
+- non-trivial body changes were staged and published through
+  [publication.md](publication.md), with read-back verification;
 - necessary implementation progress is pushed to the implementation branch;
 - verification results and known limitations are recorded;
 - blocker reason and unblocking condition are recorded when blocked; and
@@ -116,7 +127,10 @@ Before ending a session, the agent MUST ensure:
 - a `Workflow Checkpoint` is emitted according to [checkpoint.md](checkpoint.md).
 
 If Delivery implementation has begun but is incomplete, keep `In Progress` and a Draft PR only
-when the applicable Design System gate was already `Open`. If a Design System gate is still
+when the applicable Design System gate was already `Open`. If the Issue-local implementation is
+complete and its applicable internal review gate passes, first perform `In Progress` → `In Review`
+and make its PRs reviewable. Do not leave it `In Progress` because human approval is pending. If a
+Design System gate is still
 `Blocked`, keep the Issue at its truthful pre-implementation Status, record the missing handoff
 condition, and do not create or retain a runtime implementation PR. If Research/Prototype work
 without a repository artifact has begun but is incomplete, keep `In Progress` and record the next
@@ -129,7 +143,7 @@ verification records must contain the durable handoff information.
 
 ## Failure and partial completion
 
-If a remote mutation succeeds but a later metadata update fails, preserve the objective fact,
-record the failed synchronization, and reconcile on the next session. Do not repeat an integration
-because a status or comment was not updated. If a required fact cannot be verified, leave the
-lifecycle where it is and report the exact missing condition.
+If a remote mutation succeeds but a later metadata update or body read-back fails, preserve the
+objective fact, record the failed synchronization, and reconcile on the next session. Do not repeat
+an integration because a status or comment was not updated. If a required fact cannot be verified,
+leave the lifecycle where it is and report the exact missing condition.
