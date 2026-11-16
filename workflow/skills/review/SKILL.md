@@ -8,7 +8,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.1"
+  version: "1.2"
   tags: ["workflow", "review", "reviewer", "subagent", "herdr"]
 ---
 
@@ -162,9 +162,16 @@ workflow-review complete-step --task-id "$TASK_ID" --step-id check-boundary
 
 workflow-review status --review-id "$REVIEW_ID"
 workflow-review submit --task-id "$TASK_ID" --status completed
-workflow-review wait --review-id "$REVIEW_ID"
+workflow-review wait --review-id "$REVIEW_ID" --timeout-seconds 900
 workflow-review cleanup --review-id "$REVIEW_ID"
 ```
+
+`wait` uses a 15-minute (`900` second) default timeout. The primary agent must give a reviewer
+run at least 10 minutes (`600` seconds) to finish; values below that minimum are rejected. Use
+`600`–`1200` seconds for normal reviews, and use a longer value when the project or review scope
+needs it. A terminal review returns immediately, so a longer minimum does not delay already-finished
+tasks. This timeout controls review-run synchronization; it does not replace any separate host or
+subagent execution limit.
 
 The primary agent must retain the returned `review_id`, task IDs, and artifact directory in the
 current session only. The run directory is ephemeral and lives under `/tmp/workflow-reviews/`; do

@@ -88,7 +88,7 @@ printf '%s\n' '# Review Report' '' 'Result: PASS' > "$trailing_report"
 WORKFLOW_REVIEW_ROOT="$test_root/trailing-runs///" "$review_command" submit \
   --task-id "$trailing_task_id" --status completed >/dev/null
 WORKFLOW_REVIEW_ROOT="$test_root/trailing-runs///" "$review_command" wait \
-  --review-id "$trailing_review_id" --timeout-seconds 1 >/dev/null
+  --review-id "$trailing_review_id" --timeout-seconds 600 >/dev/null
 WORKFLOW_REVIEW_ROOT="$test_root/trailing-runs///" "$review_command" cleanup \
   --review-id "$trailing_review_id" >/dev/null
 
@@ -192,7 +192,7 @@ WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" submit \
 
 wait_json="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$review_id" --timeout-seconds 5
+    --review-id "$review_id" --timeout-seconds 600
 })"
 jq -e '.complete == true and .all_tasks_terminal == true and .timed_out == false and .review_gate == "requires-report-aggregation" and ([.rules[].state] | all(. == "completed"))' \
   <<< "$wait_json" >/dev/null
@@ -232,7 +232,7 @@ WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" submit \
   --task-id "$blocked_task_id" --status blocked >/dev/null
 blocked_wait="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$blocked_review_id" --timeout-seconds 1
+    --review-id "$blocked_review_id" --timeout-seconds 600
 })"
 jq -e '.complete == true and .review_gate == "blocked" and .rules[0].state == "blocked"' \
   <<< "$blocked_wait" >/dev/null
@@ -253,7 +253,7 @@ source_change_json=''
 source_change_status=0
 if source_change_json="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$source_change_review_id" --timeout-seconds 0
+    --review-id "$source_change_review_id" --timeout-seconds 600
 })"; then
   printf 'wait ignored a changed review target\n' >&2
   exit 1
@@ -280,7 +280,7 @@ untracked_json=''
 untracked_status=0
 if untracked_json="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$untracked_review_id" --timeout-seconds 0
+    --review-id "$untracked_review_id" --timeout-seconds 600
 })"; then
   printf 'wait ignored a changed untracked review target\n' >&2
   exit 1
@@ -310,7 +310,7 @@ non_git_json=''
 non_git_status=0
 if non_git_json="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$non_git_review_id" --timeout-seconds 0
+    --review-id "$non_git_review_id" --timeout-seconds 600
 })"; then
   printf 'wait ignored a changed non-Git review target\n' >&2
   exit 1
@@ -323,29 +323,12 @@ jq -e '.complete == false and .task_result == "source-changed" and .review_gate 
 WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
   --review-id "$non_git_review_id" >/dev/null
 
-timeout_start="$({
-  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
-    --project-root "$test_root/project" --rule-id architecture-boundary
-})"
-timeout_review_id="$(jq -r '.review_id' <<< "$timeout_start")"
-WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
-  --review-id "$timeout_review_id" --rule-id architecture-boundary >/dev/null
-
-timeout_json=''
-timeout_status=0
-if timeout_json="$({
-  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
-    --review-id "$timeout_review_id" --timeout-seconds 0
-})"; then
-  printf 'wait unexpectedly completed a running task\n' >&2
+if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
+  --review-id review-0000000000000000 --timeout-seconds 599 \
+  >/dev/null 2>"$test_root/short-timeout.err"; then
+  printf 'wait accepted a timeout shorter than the minimum\n' >&2
   exit 1
-else
-  timeout_status=$?
 fi
-[[ "$timeout_status" -eq 2 ]]
-jq -e '.complete == false and .timed_out == true and .rules[0].state == "running"' \
-  <<< "$timeout_json" >/dev/null
-WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
-  --review-id "$timeout_review_id" >/dev/null
+grep -q 'timeout must be at least 600 seconds (10 minutes)' "$test_root/short-timeout.err"
 
 printf 'workflow-review tests passed\n'

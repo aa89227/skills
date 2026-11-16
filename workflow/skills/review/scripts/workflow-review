@@ -12,6 +12,8 @@ done
 [[ -n "$review_store_root" ]] || review_store_root=/
 readonly review_store_root
 readonly command_name="workflow-review"
+readonly default_timeout_seconds=900
+readonly minimum_timeout_seconds=600
 active_start_directory=''
 
 die() {
@@ -1304,7 +1306,7 @@ wait_for_run() {
   ensure_store_root
 
   local review_id=''
-  local timeout_seconds=300
+  local timeout_seconds="$default_timeout_seconds"
   while (($# > 0)); do
     case "$1" in
       --review-id)
@@ -1325,6 +1327,8 @@ wait_for_run() {
   [[ -n "$review_id" ]] || die "wait requires --review-id"
   validate_review_id "$review_id"
   [[ "$timeout_seconds" =~ ^[0-9]+$ ]] || die "timeout must be a non-negative integer"
+  (( timeout_seconds >= minimum_timeout_seconds )) \
+    || die "timeout must be at least ${minimum_timeout_seconds} seconds (10 minutes)"
 
   local run_directory_path
   run_directory_path="$(run_directory "$review_id")"
@@ -1467,7 +1471,7 @@ Usage:
   workflow-review complete-step --task-id <task-id> --step-id <id> [--status completed|failed|blocked] [--reason <text>]
   workflow-review submit --task-id <task-id> [--status completed|failed|blocked]
   workflow-review status --review-id <review-id>
-  workflow-review wait --review-id <review-id> [--timeout-seconds <seconds>]
+  workflow-review wait --review-id <review-id> [--timeout-seconds <seconds; minimum 600>]
   workflow-review cleanup --review-id <review-id>
 EOF
 }
