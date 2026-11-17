@@ -111,6 +111,96 @@ artifact_dir="$(jq -r '.artifact_dir' <<< "$start_json")"
 
 jq -e '.rules | length == 2' <<< "$start_json" >/dev/null
 
+concurrent_start="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
+    --project-root "$test_root/project" --rule-id architecture-boundary
+})"
+concurrent_review_id="$(jq -r '.review_id' <<< "$concurrent_start")"
+concurrent_artifact_dir="$(jq -r '.artifact_dir' <<< "$concurrent_start")"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
+  --review-id "$concurrent_review_id" --rule-id architecture-boundary >/dev/null
+concurrent_wait_output="$test_root/concurrent-wait.json"
+concurrent_wait_error="$test_root/concurrent-wait.err"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
+  --review-id "$concurrent_review_id" --timeout-seconds 7200 \
+  >"$concurrent_wait_output" 2>"$concurrent_wait_error" &
+concurrent_wait_pid=$!
+for _ in {1..20}; do
+  [[ -f "$concurrent_artifact_dir/wait.env" ]] && break
+  sleep 0.1
+done
+[[ -f "$concurrent_artifact_dir/wait.env" ]]
+concurrent_status_json="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" status \
+    --review-id "$concurrent_review_id"
+})"
+jq -e '.wait.timeout_seconds == 7200 and .wait.clock_source == "monotonic" and .wait.state == "running"' \
+  <<< "$concurrent_status_json" >/dev/null
+if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
+  --review-id "$concurrent_review_id" --timeout-seconds 600 \
+  >/dev/null 2>"$test_root/second-wait.err"; then
+  printf 'second wait process was allowed to share a running review\n' >&2
+  kill "$concurrent_wait_pid" 2>/dev/null || true
+  wait "$concurrent_wait_pid" 2>/dev/null || true
+  exit 1
+fi
+grep -q 'another wait process is already active' "$test_root/second-wait.err"
+kill "$concurrent_wait_pid" 2>/dev/null || true
+wait "$concurrent_wait_pid" 2>/dev/null || true
+for short_timeout in 60 300; do
+  if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
+    --review-id "$concurrent_review_id" --timeout-seconds "$short_timeout" \
+    >/dev/null 2>"$test_root/short-timeout-$short_timeout.err"; then
+    printf 'wait accepted a timeout below the ten-minute policy floor\n' >&2
+    exit 1
+  fi
+  grep -q 'timeout must be at least 600 seconds (10 minutes)' \
+    "$test_root/short-timeout-$short_timeout.err"
+done
+
+clock_start="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
+    --project-root "$test_root/project" --rule-id architecture-boundary
+})"
+clock_review_id="$(jq -r '.review_id' <<< "$clock_start")"
+clock_artifact_dir="$(jq -r '.artifact_dir' <<< "$clock_start")"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
+  --review-id "$clock_review_id" --rule-id architecture-boundary >/dev/null
+clock_date_bin="$test_root/fake-date-bin"
+mkdir -p "$clock_date_bin"
+export WORKFLOW_REVIEW_FAKE_DATE_MARKER="$test_root/fake-date.marker"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'if [[ "$1" = "+%s" ]]; then' \
+  '  if [[ -e "$WORKFLOW_REVIEW_FAKE_DATE_MARKER" ]]; then' \
+  '    printf "%s\\n" 9999999999' \
+  '  else' \
+  '    : > "$WORKFLOW_REVIEW_FAKE_DATE_MARKER"' \
+  '    printf "%s\\n" 1000' \
+  '  fi' \
+  '  exit 0' \
+  'fi' \
+  'exec /bin/date "$@"' > "$clock_date_bin/date"
+chmod +x "$clock_date_bin/date"
+PATH="$clock_date_bin:$PATH" WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
+  --review-id "$clock_review_id" --timeout-seconds 600 \
+  >"$test_root/clock-wait.json" 2>"$test_root/clock-wait.err" &
+clock_wait_pid=$!
+for _ in {1..20}; do
+  [[ -f "$clock_artifact_dir/wait.env" ]] && break
+  sleep 0.1
+done
+[[ -f "$clock_artifact_dir/wait.env" ]]
+sleep 2
+clock_status_json="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" status \
+    --review-id "$clock_review_id"
+})"
+jq -e '.state == "running" and .wait.clock_source == "monotonic" and .wait.state == "running"' \
+  <<< "$clock_status_json" >/dev/null
+kill "$clock_wait_pid" 2>/dev/null || true
+wait "$clock_wait_pid" 2>/dev/null || true
+
 task_one="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
     --review-id "$review_id" --rule-id architecture-boundary
@@ -200,6 +290,81 @@ WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
   --review-id "$review_id" >/dev/null
 [[ ! -d "$artifact_dir" ]]
 
+retained_start="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
+    --project-root "$test_root/project" \
+    --rule-id architecture-boundary \
+    --rule-id documentation-quality
+})"
+retained_review_id="$(jq -r '.review_id' <<< "$retained_start")"
+retained_artifact_dir="$(jq -r '.artifact_dir' <<< "$retained_start")"
+retained_task="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
+    --review-id "$retained_review_id" --rule-id architecture-boundary
+})"
+retained_task_id="$(jq -r '.task_id' <<< "$retained_task")"
+retained_report="$(jq -r '.report_path' <<< "$retained_task")"
+while IFS= read -r retained_step_id; do
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start-step \
+    --task-id "$retained_task_id" --step-id "$retained_step_id" >/dev/null
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" complete-step \
+    --task-id "$retained_task_id" --step-id "$retained_step_id" >/dev/null
+done < <(jq -r '.steps[].step_id' <<< "$retained_task")
+printf '%s\n' '# Review Report' '' 'Result: PASS' > "$retained_report"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" submit \
+  --task-id "$retained_task_id" --status completed >/dev/null
+sed -i 's/^state=.*/state=timed_out/' "$retained_artifact_dir/run.env"
+if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
+  --review-id "$retained_review_id" >/dev/null 2>"$test_root/early-cleanup.err"; then
+  printf 'cleanup deleted a timed-out run before report aggregation\n' >&2
+  exit 1
+fi
+grep -q 'before report aggregation' "$test_root/early-cleanup.err"
+[[ -f "$retained_report" ]]
+if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
+  --review-id "$retained_review_id" --after-aggregation \
+  >/dev/null 2>"$test_root/incomplete-cleanup.err"; then
+  printf 'cleanup deleted a timed-out run with a non-terminal task\n' >&2
+  exit 1
+fi
+grep -q 'before every task is terminal' "$test_root/incomplete-cleanup.err"
+[[ -f "$retained_report" ]]
+grep -q 'Result: PASS' "$retained_report"
+
+retained_complete_start="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
+    --project-root "$test_root/project" --rule-id architecture-boundary
+})"
+retained_complete_review_id="$(jq -r '.review_id' <<< "$retained_complete_start")"
+retained_complete_artifact_dir="$(jq -r '.artifact_dir' <<< "$retained_complete_start")"
+retained_complete_task="$({
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" get-task \
+    --review-id "$retained_complete_review_id" --rule-id architecture-boundary
+})"
+retained_complete_task_id="$(jq -r '.task_id' <<< "$retained_complete_task")"
+retained_complete_report="$(jq -r '.report_path' <<< "$retained_complete_task")"
+while IFS= read -r retained_complete_step_id; do
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start-step \
+    --task-id "$retained_complete_task_id" --step-id "$retained_complete_step_id" >/dev/null
+  WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" complete-step \
+    --task-id "$retained_complete_task_id" --step-id "$retained_complete_step_id" >/dev/null
+done < <(jq -r '.steps[].step_id' <<< "$retained_complete_task")
+printf '%s\n' '# Review Report' '' 'Result: PASS' > "$retained_complete_report"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" submit \
+  --task-id "$retained_complete_task_id" --status completed >/dev/null
+sed -i 's/^state=.*/state=timed_out/' "$retained_complete_artifact_dir/run.env"
+if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
+  --review-id "$retained_complete_review_id" >/dev/null 2>"$test_root/complete-early-cleanup.err"; then
+  printf 'cleanup deleted a timed-out report before aggregation\n' >&2
+  exit 1
+fi
+grep -q 'before report aggregation' "$test_root/complete-early-cleanup.err"
+[[ -f "$retained_complete_report" ]]
+grep -q 'Result: PASS' "$retained_complete_report"
+WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
+  --review-id "$retained_complete_review_id" --after-aggregation >/dev/null
+[[ ! -d "$retained_complete_artifact_dir" ]]
+
 blocked_start="$({
   WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" start \
     --project-root "$test_root/project" --rule-id architecture-boundary
@@ -264,7 +429,7 @@ fi
 jq -e '.complete == false and .task_result == "source-changed" and .review_gate == "blocked"' \
   <<< "$source_change_json" >/dev/null
 WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
-  --review-id "$source_change_review_id" >/dev/null
+  --review-id "$source_change_review_id" --after-aggregation >/dev/null 2>&1 || true
 
 printf '%s\n' 'untracked before review' > "$test_root/project/untracked.txt"
 untracked_start="$({
@@ -291,7 +456,7 @@ fi
 jq -e '.complete == false and .task_result == "source-changed" and .review_gate == "blocked"' \
   <<< "$untracked_json" >/dev/null
 WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
-  --review-id "$untracked_review_id" >/dev/null
+  --review-id "$untracked_review_id" --after-aggregation >/dev/null 2>&1 || true
 
 mkdir -p "$test_root/non-git-project/.workflow/review-rules"
 cp "$test_root/project/.workflow/review-rules/architecture-boundary.md" \
@@ -321,7 +486,7 @@ fi
 jq -e '.complete == false and .task_result == "source-changed" and .review_gate == "blocked"' \
   <<< "$non_git_json" >/dev/null
 WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" cleanup \
-  --review-id "$non_git_review_id" >/dev/null
+  --review-id "$non_git_review_id" --after-aggregation >/dev/null 2>&1 || true
 
 if WORKFLOW_REVIEW_ROOT="$test_root/runs" "$review_command" wait \
   --review-id review-0000000000000000 --timeout-seconds 599 \

@@ -8,7 +8,7 @@ description: |
 license: MIT
 metadata:
   author: aa89227
-  version: "1.2"
+  version: "1.3"
   tags: ["workflow", "review", "reviewer", "subagent", "herdr"]
 ---
 
@@ -116,8 +116,11 @@ Before a run:
    decision record as current implementation truth.
 2. Load `.workflow/review-rules/*.md`, validate the metadata, and select enabled rules applicable
    to the current change. If the directory is absent, empty, or invalid, block the review.
-3. Start one run with the stable `workflow-review` command and one `--rule-id` for every selected
-   rule. The command returns a random `review_id` and an artifact directory outside the project.
+3. Verify that `command -v workflow-review` resolves the stable launcher. If it does not, stop and
+   report an incomplete host setup; do not prepend a versioned plugin-cache directory or invoke a
+   cache copy directly. Start one run with the stable `workflow-review` command and one `--rule-id`
+   for every selected rule. The command returns a random `review_id` and an artifact directory
+   outside the project.
 4. Create one independent reviewer task per selected rule. The reviewer must call `get-task` before
    reviewing so it receives the rule snapshot, project root, task ID, and report path.
 
@@ -166,18 +169,27 @@ workflow-review wait --review-id "$REVIEW_ID" --timeout-seconds 900
 workflow-review cleanup --review-id "$REVIEW_ID"
 ```
 
-`wait` uses a 15-minute (`900` second) default timeout. The primary agent must give a reviewer
-run at least 10 minutes (`600` seconds) to finish; values below that minimum are rejected. Use
-`600`–`1200` seconds for normal reviews, and use a longer value when the project or review scope
-needs it. A terminal review returns immediately, so a longer minimum does not delay already-finished
-tasks. This timeout controls review-run synchronization; it does not replace any separate host or
-subagent execution limit.
+`wait` uses a 15-minute (`900` second) default timeout, but the primary agent must always pass an
+explicit timeout. Values below 10 minutes (`600` seconds) are rejected. Use `600`–`1200` seconds
+for normal reviews, and use a longer value when the project or review scope needs it. A terminal
+review returns immediately, so a longer minimum does not delay already-finished tasks. This timeout
+controls review-run synchronization; it does not replace any separate host or subagent execution
+limit.
+
+Only one `wait` process may own a review run at a time. A second waiter is rejected instead of
+sharing or overwriting the first waiter's deadline. The engine records the PID, requested timeout,
+wall-clock epoch, monotonic clock when available, elapsed time, and terminal wait state in the
+external run artifact. On Linux it uses `/proc/uptime` for timeout measurement; if that monotonic
+source is unavailable, the diagnostic records `clock_source: wall` and the possible system-clock
+jump limitation.
 
 The primary agent must retain the returned `review_id`, task IDs, and artifact directory in the
 current session only. The run directory is ephemeral and lives under `/tmp/workflow-reviews/`; do
 not commit it, copy it into the project, attach it to a GitHub Issue, or treat it as an audit log.
-After reading the reports and recording the current outcome, call `cleanup`; an interrupted run may
-remain only until the host's normal `/tmp` cleanup.
+After a normal terminal run, read and aggregate the reports, then call `cleanup`. A timed-out or
+source-invalidated run must not be cleaned up before report aggregation: `cleanup` refuses those
+states unless `--after-aggregation` is supplied, and it also requires every task to be terminal.
+If a reviewer never becomes terminal, leave the external directory for normal `/tmp` cleanup.
 The primary agent reads the report files directly after `wait` and may summarize the result in the
 current response or current PR workflow. If the process resumes without the run artifacts, start a
 new review instead of reconstructing an old result.
@@ -214,9 +226,10 @@ Every finding is classified as `Blocking`, `Non-blocking`, or `Informational`; a
 preference is not automatically a blocking finding.
 
 The primary agent may call `workflow-review status --review-id <id>` while tasks are running. The
-status output exposes step state and dynamic-step relationships, but the primary agent must not read
-or edit a reviewer's in-progress report or step artifacts. The reviewer does not need approval for a
-dynamic child step; the rule's declared `dynamic_parents` and the one-level limit are the boundary.
+status output exposes step state, dynamic-step relationships, and timeout diagnostics, but the
+primary agent must not read or edit a reviewer's in-progress report or step artifacts. The reviewer
+does not need approval for a dynamic child step; the rule's declared `dynamic_parents` and the
+one-level limit are the boundary.
 
 The primary agent must not read another reviewer's task directory while that reviewer is working,
 must not edit a reviewer's report to change its conclusion, and must not silently fix code during

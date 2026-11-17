@@ -111,6 +111,11 @@ write_value() {
   mv -- "$temporary_file" "$properties_file"
 }
 
+monotonic_milliseconds() {
+  [[ -r /proc/uptime ]] || return 1
+  awk '{ printf "%.0f\n", $1 * 1000 }' /proc/uptime
+}
+
 frontmatter_value() {
   local metadata_file="$1"
   local metadata_key="$2"
@@ -297,6 +302,11 @@ run_directory() {
 run_property_file() {
   local run_directory_path="$1"
   printf '%s/run.env\n' "$run_directory_path"
+}
+
+wait_property_file() {
+  local run_directory_path="$1"
+  printf '%s/wait.env\n' "$run_directory_path"
 }
 
 rules_file() {
@@ -1294,14 +1304,107 @@ review_status() {
   local rules_json
   rules_json="$(jq -s '.' "$status_lines")"
   rm -f -- "$status_lines"
+  local wait_json
+  wait_json="$(wait_diagnostics_json "$run_directory_path")"
   jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
     --arg state "$(read_value state "$(run_property_file "$run_directory_path")")" \
-    --argjson rules "$rules_json" \
-    '{review_id: $review_id, artifact_dir: $artifact_dir, state: $state, rules: $rules}'
+    --argjson rules "$rules_json" --argjson wait "$wait_json" \
+    '{review_id: $review_id, artifact_dir: $artifact_dir, state: $state, wait: $wait, rules: $rules}'
+}
+
+wait_diagnostics_json() {
+  local run_directory_path="$1"
+  local wait_file
+  wait_file="$(wait_property_file "$run_directory_path")"
+  [[ -f "$wait_file" ]] || {
+    printf 'null\n'
+    return 0
+  }
+
+  jq -n \
+    --arg pid "$(read_value wait_pid "$wait_file")" \
+    --arg timeout_seconds "$(read_value wait_timeout_seconds "$wait_file")" \
+    --arg clock_source "$(read_value wait_clock_source "$wait_file")" \
+    --arg started_at_epoch "$(read_value wait_started_at_epoch "$wait_file")" \
+    --arg started_at_monotonic_ms "$(read_value wait_started_at_monotonic_ms "$wait_file")" \
+    --arg last_observed_epoch "$(read_value wait_last_observed_epoch "$wait_file")" \
+    --arg last_observed_monotonic_ms "$(read_value wait_last_observed_monotonic_ms "$wait_file")" \
+    --arg ended_at_epoch "$(read_value wait_ended_at_epoch "$wait_file")" \
+    --arg ended_at_monotonic_ms "$(read_value wait_ended_at_monotonic_ms "$wait_file")" \
+    --arg elapsed_ms "$(read_value wait_elapsed_ms "$wait_file")" \
+    --arg state "$(read_value wait_state "$wait_file")" \
+    '{pid: ($pid | try tonumber catch null), timeout_seconds: ($timeout_seconds | try tonumber catch null), clock_source: $clock_source, started_at_epoch: ($started_at_epoch | try tonumber catch null), started_at_monotonic_ms: ($started_at_monotonic_ms | try tonumber catch null), last_observed_epoch: ($last_observed_epoch | try tonumber catch null), last_observed_monotonic_ms: ($last_observed_monotonic_ms | try tonumber catch null), ended_at_epoch: ($ended_at_epoch | try tonumber catch null), ended_at_monotonic_ms: ($ended_at_monotonic_ms | try tonumber catch null), elapsed_ms: ($elapsed_ms | try tonumber catch null), state: $state}'
+}
+
+wait_result_json() {
+  local review_id="$1"
+  local artifact_dir="$2"
+  local complete="$3"
+  local all_tasks_terminal="$4"
+  local timed_out="$5"
+  local task_result="$6"
+  local review_gate="$7"
+  local rules_json="$8"
+  local timeout_json
+  timeout_json="$(wait_diagnostics_json "$artifact_dir")"
+
+  jq -n --arg review_id "$review_id" --arg artifact_dir "$artifact_dir" \
+    --argjson complete "$complete" --argjson all_tasks_terminal "$all_tasks_terminal" \
+    --argjson timed_out "$timed_out" --arg task_result "$task_result" \
+    --arg review_gate "$review_gate" --argjson rules "$rules_json" --argjson timeout "$timeout_json" \
+    '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, timeout: $timeout, rules: $rules}'
+}
+
+transition_run_state() {
+  local run_directory_path="$1"
+  local requested_state="$2"
+  local lock_fd
+  local current_state
+
+  exec {lock_fd}>"${run_directory_path}/run.lock"
+  flock "$lock_fd"
+  current_state="$(read_value state "$(run_property_file "$run_directory_path")")"
+  if [[ "$current_state" = running ]]; then
+    write_value state "$requested_state" "$(run_property_file "$run_directory_path")"
+  fi
+  flock -u "$lock_fd"
+  exec {lock_fd}>&-
+  printf '%s\n' "$current_state"
+}
+
+finish_wait_diagnostics() {
+  local run_directory_path="$1"
+  local final_state="$2"
+  local wait_file
+  local ended_at_epoch
+  local ended_at_monotonic_ms=''
+  local started_at_epoch
+  local started_at_monotonic_ms
+  local elapsed_ms=''
+
+  wait_file="$(wait_property_file "$run_directory_path")"
+  ended_at_epoch="$(date +%s)"
+  ended_at_monotonic_ms="$(monotonic_milliseconds 2>/dev/null || true)"
+  started_at_epoch="$(read_value wait_started_at_epoch "$wait_file")"
+  started_at_monotonic_ms="$(read_value wait_started_at_monotonic_ms "$wait_file")"
+
+  if [[ "$started_at_monotonic_ms" =~ ^[0-9]+$ && "$ended_at_monotonic_ms" =~ ^[0-9]+$ ]]; then
+    elapsed_ms=$((ended_at_monotonic_ms - started_at_monotonic_ms))
+  elif [[ "$started_at_epoch" =~ ^[0-9]+$ && "$ended_at_epoch" =~ ^[0-9]+$ ]]; then
+    elapsed_ms=$(((ended_at_epoch - started_at_epoch) * 1000))
+  fi
+
+  write_value wait_state "$final_state" "$wait_file"
+  write_value wait_last_observed_epoch "$ended_at_epoch" "$wait_file"
+  write_value wait_last_observed_monotonic_ms "$ended_at_monotonic_ms" "$wait_file"
+  write_value wait_ended_at_epoch "$ended_at_epoch" "$wait_file"
+  write_value wait_ended_at_monotonic_ms "$ended_at_monotonic_ms" "$wait_file"
+  write_value wait_elapsed_ms "$elapsed_ms" "$wait_file"
 }
 
 wait_for_run() {
   require_jq
+  require_flock
   require_hash_tool
   ensure_store_root
 
@@ -1332,11 +1435,49 @@ wait_for_run() {
 
   local run_directory_path
   run_directory_path="$(run_directory "$review_id")"
+  local wait_lock_fd
+  exec {wait_lock_fd}>"${run_directory_path}/wait.lock"
+  if ! flock -n "$wait_lock_fd"; then
+    exec {wait_lock_fd}>&-
+    die "another wait process is already active for review run: $review_id"
+  fi
+
+  local wait_file
+  wait_file="$(wait_property_file "$run_directory_path")"
+  local run_state
+  run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
   local started_at
-  started_at="$(date +%s)"
+  local started_at_monotonic_ms=''
+  local wait_clock_source
+  if [[ "$run_state" = running || ! -f "$wait_file" ]]; then
+    started_at="$(date +%s)"
+    if started_at_monotonic_ms="$(monotonic_milliseconds 2>/dev/null)"; then
+      wait_clock_source=monotonic
+    else
+      wait_clock_source=wall
+    fi
+    : > "$wait_file"
+    write_value wait_pid "$$" "$wait_file"
+    write_value wait_timeout_seconds "$timeout_seconds" "$wait_file"
+    write_value wait_clock_source "$wait_clock_source" "$wait_file"
+    write_value wait_started_at_epoch "$started_at" "$wait_file"
+    write_value wait_started_at_monotonic_ms "$started_at_monotonic_ms" "$wait_file"
+    write_value wait_last_observed_epoch "$started_at" "$wait_file"
+    write_value wait_last_observed_monotonic_ms "$started_at_monotonic_ms" "$wait_file"
+    write_value wait_ended_at_epoch '' "$wait_file"
+    write_value wait_ended_at_monotonic_ms '' "$wait_file"
+    write_value wait_elapsed_ms 0 "$wait_file"
+    write_value wait_state running "$wait_file"
+  else
+    started_at="$(read_value wait_started_at_epoch "$wait_file")"
+    [[ "$started_at" =~ ^[0-9]+$ ]] || started_at="$(date +%s)"
+  fi
+
   local rules_json
   local all_terminal
   local current_time
+  local current_monotonic_ms
+  local elapsed_ms
   local status_lines
   local status_line
   local rule_id
@@ -1346,10 +1487,10 @@ wait_for_run() {
   local project_root
   local expected_target
   local observed_target
-  local run_state
   local required_tasks_complete
   local task_result
   local review_gate_value
+  local previous_state
 
   while :; do
     all_terminal=true
@@ -1374,17 +1515,13 @@ wait_for_run() {
 
     run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
     if [[ "$run_state" = timed_out ]]; then
-      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
-        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out true \
-        --arg task_result timed-out --arg review_gate blocked --argjson rules "$rules_json" \
-        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      wait_result_json "$review_id" "$run_directory_path" false false true \
+        timed-out blocked "$rules_json"
       return 2
     fi
     if [[ "$run_state" = invalidated ]]; then
-      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
-        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out false \
-        --arg task_result source-changed --arg review_gate blocked --argjson rules "$rules_json" \
-        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      wait_result_json "$review_id" "$run_directory_path" false false false \
+        source-changed blocked "$rules_json"
       return 3
     fi
 
@@ -1392,16 +1529,31 @@ wait_for_run() {
     expected_target="$(read_value target "$(run_property_file "$run_directory_path")")"
     observed_target="$(target_commit "$project_root")"
     if [[ "$expected_target" != "$observed_target" ]]; then
-      write_value state invalidated "$(run_property_file "$run_directory_path")"
-      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
-        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out false \
-        --arg task_result source-changed --arg review_gate blocked --argjson rules "$rules_json" \
-        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
-      return 3
+      previous_state="$(transition_run_state "$run_directory_path" invalidated)"
+      if [[ "$previous_state" = running ]]; then
+        finish_wait_diagnostics "$run_directory_path" invalidated
+        wait_result_json "$review_id" "$run_directory_path" false false false \
+          source-changed blocked "$rules_json"
+        return 3
+      fi
+      continue
     fi
 
     if [[ "$all_terminal" = true ]]; then
-      write_value state complete "$(run_property_file "$run_directory_path")"
+      previous_state="$(transition_run_state "$run_directory_path" complete)"
+      if [[ "$previous_state" = timed_out ]]; then
+        wait_result_json "$review_id" "$run_directory_path" false false true \
+          timed-out blocked "$rules_json"
+        return 2
+      fi
+      if [[ "$previous_state" = invalidated ]]; then
+        wait_result_json "$review_id" "$run_directory_path" false false false \
+          source-changed blocked "$rules_json"
+        return 3
+      fi
+      if [[ "$previous_state" = running ]]; then
+        finish_wait_diagnostics "$run_directory_path" completed
+      fi
       if [[ "$required_tasks_complete" = true ]]; then
         task_result=ready-for-aggregation
         review_gate_value=requires-report-aggregation
@@ -1409,22 +1561,28 @@ wait_for_run() {
         task_result=required-task-failed
         review_gate_value=blocked
       fi
-      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
-        --argjson complete true --argjson all_tasks_terminal true --argjson timed_out false \
-        --arg task_result "$task_result" --arg review_gate "$review_gate_value" \
-        --argjson rules "$rules_json" \
-        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
+      wait_result_json "$review_id" "$run_directory_path" true true false \
+        "$task_result" "$review_gate_value" "$rules_json"
       return 0
     fi
 
     current_time="$(date +%s)"
-    if ((current_time - started_at >= timeout_seconds)); then
-      write_value state timed_out "$(run_property_file "$run_directory_path")"
-      jq -n --arg review_id "$review_id" --arg artifact_dir "$run_directory_path" \
-        --argjson complete false --argjson all_tasks_terminal false --argjson timed_out true \
-        --arg task_result timed-out --arg review_gate blocked --argjson rules "$rules_json" \
-        '{review_id: $review_id, artifact_dir: $artifact_dir, complete: $complete, all_tasks_terminal: $all_tasks_terminal, timed_out: $timed_out, task_result: $task_result, review_gate: $review_gate, rules: $rules}'
-      return 2
+    current_monotonic_ms="$(monotonic_milliseconds 2>/dev/null || true)"
+    started_at_monotonic_ms="$(read_value wait_started_at_monotonic_ms "$wait_file")"
+    if [[ "$started_at_monotonic_ms" =~ ^[0-9]+$ && "$current_monotonic_ms" =~ ^[0-9]+$ ]]; then
+      elapsed_ms=$((current_monotonic_ms - started_at_monotonic_ms))
+    else
+      elapsed_ms=$(((current_time - started_at) * 1000))
+    fi
+    if ((elapsed_ms >= timeout_seconds * 1000)); then
+      previous_state="$(transition_run_state "$run_directory_path" timed_out)"
+      if [[ "$previous_state" = running ]]; then
+        finish_wait_diagnostics "$run_directory_path" timed_out
+        wait_result_json "$review_id" "$run_directory_path" false false true \
+          timed-out blocked "$rules_json"
+        return 2
+      fi
+      continue
     fi
     sleep 1
   done
@@ -1435,12 +1593,17 @@ cleanup_run() {
   ensure_store_root
 
   local review_id=''
+  local after_aggregation=false
   while (($# > 0)); do
     case "$1" in
       --review-id)
         (($# >= 2)) || die "--review-id needs a value"
         review_id="$2"
         shift 2
+        ;;
+      --after-aggregation)
+        after_aggregation=true
+        shift
         ;;
       *)
         die "unknown cleanup argument: $1"
@@ -1455,6 +1618,25 @@ cleanup_run() {
   local run_state
   run_state="$(read_value state "$(run_property_file "$run_directory_path")")"
   [[ "$run_state" != running ]] || die "cannot clean up an active review run: $review_id"
+  if [[ "$run_state" = timed_out || "$run_state" = invalidated ]]; then
+    [[ "$after_aggregation" = true ]] \
+      || die "cannot clean up a ${run_state} review run before report aggregation; use --after-aggregation after reading reports"
+    local rule_id
+    local rule_name
+    local rule_required
+    local task_properties_file
+    local task_state
+    while IFS=$'\t' read -r rule_id rule_name rule_required; do
+      [[ -n "$rule_id" ]] || continue
+      task_properties_file="$(task_file_for_rule "$run_directory_path" "$rule_id")"
+      [[ -n "$task_properties_file" ]] || die "cannot clean up ${run_state} review run before every task is terminal: missing task $rule_id"
+      task_state="$(read_value state "$task_properties_file")"
+      case "$task_state" in
+        completed|failed|blocked) ;;
+        *) die "cannot clean up ${run_state} review run before every task is terminal: $rule_id ($task_state)" ;;
+      esac
+    done < "$(rules_file "$run_directory_path")"
+  fi
   run_directory_path="$(run_directory "$review_id")"
   rm -rf -- "$run_directory_path"
   jq -n --arg review_id "$review_id" --arg state "$run_state" \
@@ -1472,7 +1654,7 @@ Usage:
   workflow-review submit --task-id <task-id> [--status completed|failed|blocked]
   workflow-review status --review-id <review-id>
   workflow-review wait --review-id <review-id> [--timeout-seconds <seconds; minimum 600>]
-  workflow-review cleanup --review-id <review-id>
+  workflow-review cleanup --review-id <review-id> [--after-aggregation]
 EOF
 }
 
